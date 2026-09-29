@@ -381,10 +381,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Get when the Consensus Layer is done accounting the reported slashings of the Node Operator
+    /// @notice Get the timestamp until which the slashing settlement period of the Node Operator lasts
     /// @dev Set on a slashing report. Restricts the bond claims, see `IAccounting.getClaimableBondShares`.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return Timestamp of the latest slashing settlement
+    /// @return Timestamp of the slashing settlement period end, bond claims are restricted before it (0 if never set)
     function getSlashingSettleDeadline(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
@@ -421,6 +421,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @dev The penalty rate comes from the Node Operator's curve and is scaled by the pre-slashing key balance.
     ///      The key is reported as withdrawn right away.
+    ///      Replaying the report for an already slashed key settles a slashing recorded before the upgrade
+    ///      and extends the slashing settlement period.
+    ///      Reverts if the key is already withdrawn.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param timeToWithdrawable Time left until the slashed key becomes withdrawable on the Consensus Layer

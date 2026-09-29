@@ -9,6 +9,8 @@ import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 
+import { VmSafe } from "forge-std/Vm.sol";
+
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
@@ -731,26 +733,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.isValidatorSlashed(noId, 1);
     }
 
-    function test_reportValidatorSlashing_CalledTwice() public assertInvariants {
-        uint256 noId = createNodeOperator(17);
-        module.obtainDepositData(17, "");
-        uint256 keyIndex = 11;
-
-        module.reportValidatorSlashing(noId, keyIndex, 0);
-        uint256 nonce = module.getNonce();
-        uint256 deadline = module.getSlashingSettleDeadline(noId);
-
-        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
-        vm.recordLogs();
-        module.reportValidatorSlashing(noId, keyIndex, 365 days);
-
-        assertEq(vm.getRecordedLogs().length, 0);
-        assertEq(module.getNonce(), nonce);
-        assertEq(module.getSlashingSettleDeadline(noId), deadline);
-        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
-        assertEq(module.getTotalModuleStake(), 16 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
-    }
-
     function test_reportValidatorSlashing_ignoresLaterWithdrawalReports() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
@@ -784,12 +766,23 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         vm.store(address(module), keccak256(abi.encode(pointer, IS_VALIDATOR_SLASHED_SLOT)), bytes32(uint256(1)));
         assertFalse(module.isValidatorWithdrawn(noId, 0));
 
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 1 ether));
-        module.reportValidatorSlashing(noId, 0, 0);
+        uint256 timeToWithdrawable = 3 days;
+        uint256 settleDelay = module.SLASHING_SETTLE_DELAY();
+        uint256 deadline = block.timestamp + timeToWithdrawable + settleDelay;
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.SlashingSettleDeadlineChanged(noId, deadline);
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 1 ether));
+        vm.recordLogs();
+        module.reportValidatorSlashing(noId, 0, timeToWithdrawable);
+
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertNotEq(logs[i].topics[0], IBaseModule.ValidatorSlashingReported.selector);
+        }
         assertTrue(module.isValidatorWithdrawn(noId, 0));
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
-        assertEq(module.getSlashingSettleDeadline(noId), 0, "a replayed report does not re-record the slashing");
+        assertEq(module.getSlashingSettleDeadline(noId), deadline);
     }
 
     function test_reportValidatorSlashing_RevertWhen_OperatorDoesNotExist() public {
@@ -802,6 +795,17 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.reportValidatorSlashing(noId, 0, 0);
+    }
+
+    function test_reportValidatorSlashing_RevertWhen_AlreadyWithdrawn() public {
+        uint256 noId = createNodeOperator(17);
+        module.obtainDepositData(17, "");
+        uint256 keyIndex = 11;
+
+        module.reportValidatorSlashing(noId, keyIndex, 0);
+
+        vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector);
+        module.reportValidatorSlashing(noId, keyIndex, 365 days);
     }
 
     function test_keyConfirmedBalance_chargesOnWithdraw() public assertInvariants {

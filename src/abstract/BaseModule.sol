@@ -45,7 +45,8 @@ abstract contract BaseModule is
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
-    /// @dev Covers the Consensus Layer penalties applied once the slashed key becomes withdrawable.
+    /// @dev How long bond claims stay restricted after a slashed key becomes withdrawable,
+    ///      giving the committee time to apply extra penalties.
     uint256 public constant SLASHING_SETTLE_DELAY = 14 days;
 
     ILidoLocator public immutable LIDO_LOCATOR;
@@ -349,18 +350,20 @@ abstract contract BaseModule is
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        // Replaying the report settles a slashing recorded before the upgrade.
+
+        if ($.isValidatorWithdrawn[pointer]) revert SlashingPenaltyIsNotApplicable();
+
         if (!$.isValidatorSlashed[pointer]) {
             $.isValidatorSlashed[pointer] = true;
 
             bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
             emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
+        }
 
-            uint256 deadline = block.timestamp + timeToWithdrawable + SLASHING_SETTLE_DELAY;
-            if (deadline > $.slashingSettleDeadline[nodeOperatorId]) {
-                $.slashingSettleDeadline[nodeOperatorId] = deadline;
-                emit SlashingSettleDeadlineChanged(nodeOperatorId, deadline);
-            }
+        uint256 deadline = block.timestamp + timeToWithdrawable + SLASHING_SETTLE_DELAY;
+        if (deadline > $.slashingSettleDeadline[nodeOperatorId]) {
+            $.slashingSettleDeadline[nodeOperatorId] = deadline;
+            emit SlashingSettleDeadlineChanged(nodeOperatorId, deadline);
         }
 
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);

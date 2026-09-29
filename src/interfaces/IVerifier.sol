@@ -137,7 +137,7 @@ interface IVerifier {
 
     /// @notice Verify proof of a slashed validator and report it to the module
     /// @dev The time left until the proven `withdrawableEpoch` is passed to the module to lock the bond claims
-    ///      until the slashing is fully accounted on the Consensus Layer.
+    ///      until the slashing settlement period has passed.
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 

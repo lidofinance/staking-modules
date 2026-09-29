@@ -191,7 +191,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     function getBondSummaryShares(uint256 nodeOperatorId) external view returns (uint256 current, uint256 required);
 
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
-    /// @dev Returns zero while a reported slashing is not fully accounted on the Consensus Layer. The uncovered
+    /// @dev Returns zero while the slashing settlement period has not passed yet. The uncovered
     ///      losses remain as the bond debt, keeping the claimable amount at zero until compensated.
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Current claimable bond in stETH shares
