@@ -25,6 +25,7 @@ import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.so
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
+import { JsonBindings } from "../utils/JsonBindings.sol";
 import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
@@ -433,7 +434,7 @@ abstract contract DeployCSM0x02Base is Script {
             deployJson.set("VettedGateImpl", address(0));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("CircuitBreaker", circuitBreaker);
-            deployJson.set("DeployParams", abi.encode(config));
+            deployJson.str = JsonBindings.serialize(config, deployJson.ref, "DeployParams");
             deployJson.set("git-ref", gitRef);
             vm.writeJson(deployJson.str, _deployJsonFilename());
         }
