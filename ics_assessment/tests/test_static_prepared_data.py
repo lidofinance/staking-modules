@@ -1,5 +1,8 @@
 import csv
 import json
+from dataclasses import replace
+
+import pytest
 from pathlib import Path
 
 from ics_assessment.config import (
@@ -52,6 +55,22 @@ HUMANITY_SOURCES = HumanitySources(
     ssv_verified_operators_path=SSV_VERIFIED_OPERATORS_PATH,
 )
 HUMANITY_EVALUATOR = HumanityEvaluator(HUMANITY_SOURCES)
+
+
+@pytest.fixture(autouse=True)
+def management_address_fixtures(monkeypatch, tmp_path):
+    # Retained round artifacts use the old owner-only schema. Adapt known owners
+    # in fixtures only; real sync must fetch both roles from the contract.
+    replacements = {}
+    for chain in ("mainnet", "hoodi"):
+        field = f"node_operator_owners_{chain}_path"
+        old = getattr(EXPERIENCE_SOURCES, field)
+        owners = json.loads(old.read_text())
+        new = tmp_path / old.name
+        new.write_text(json.dumps({key: ([value] if isinstance(value, str) else value)
+                                   for key, value in owners.items()}))
+        replacements[field] = new
+    monkeypatch.setattr(EXPERIENCE_EVALUATOR, "sources", replace(EXPERIENCE_SOURCES, **replacements))
 
 
 def _first_csv_row(path: Path) -> list[str]:

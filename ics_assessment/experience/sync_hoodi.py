@@ -15,6 +15,7 @@ from ics_assessment.config import (
     HOODI_FEE_DISTRIBUTOR_ADDRESS,
     HOODI_FEE_DISTRIBUTOR_FROM_BLOCK,
     HOODI_RPC_URL,
+    IPFS_GATEWAY_URL,
     REQUIRED_PERFORMANCE_WINDOW_HOODI,
 )
 from ics_assessment.sync import get_raw_logs
@@ -61,7 +62,7 @@ EPOCH_SECONDS = SLOTS_PER_EPOCH * SECONDS_PER_SLOT  # 384s
 
 
 def request_performance_report(cid: str, retries: int = 3, delay: float = 1.5) -> dict:
-    url = f"https://ipfs.io/ipfs/{cid}"
+    url = f"{IPFS_GATEWAY_URL}/{cid}"
     last_exc: Optional[Exception] = None
     for _ in range(retries):
         try:

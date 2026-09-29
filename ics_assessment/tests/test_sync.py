@@ -2,7 +2,6 @@ import asyncio
 import csv
 import importlib
 import json
-import sys
 import types
 
 import pytest
@@ -71,21 +70,7 @@ def _patch_node_owner_web3(monkeypatch, mod, count, failure_counts):
 
 
 def _load_module():
-    async_web3_stub = types.SimpleNamespace(AsyncHTTPProvider=object)
-
-    class Web3Stub:
-        HTTPProvider = staticmethod(lambda url: url)
-
-        def __init__(self, provider):
-            self.provider = provider
-
-    web3_stub = types.SimpleNamespace(
-        AsyncWeb3=async_web3_stub,
-        Web3=Web3Stub,
-    )
-    sys.modules.setdefault("web3", web3_stub)
-    sys.modules.pop("ics_assessment.sync", None)
-    return importlib.import_module("ics_assessment.sync")
+    return importlib.reload(importlib.import_module("ics_assessment.sync"))
 
 
 def test_expand_targets_all_dedupes():
@@ -94,9 +79,37 @@ def test_expand_targets_all_dedupes():
     assert targets == mod.JOB_ORDER
 
 
+def test_sync_all_runs_supported_sources_without_gitpoap(monkeypatch):
+    mod = _load_module()
+    called = []
+    monkeypatch.setattr(mod, "_ensure_required_rpcs", lambda target: None)
+    for target in mod.JOBS:
+        monkeypatch.setitem(mod.JOBS, target, lambda target=target: called.append(target))
+
+    assert mod.main(["all"]) == 0
+    assert called == [
+        "aragon",
+        "snapshot",
+        "galxe",
+        "protocol-guild",
+        "obol-techne",
+        "ssv-verified",
+        "node-owners",
+        "mainnet-performance",
+        "hoodi-eligible",
+        "circles",
+    ]
+
+
+def test_sync_rejects_gitpoap_target():
+    mod = _load_module()
+    with pytest.raises(SystemExit, match="^Unknown sync target: gitpoap$"):
+        mod.main(["gitpoap"])
+
+
 def test_sync_snapshot_writes_votes(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.engagement_jobs.SNAPSHOT_VOTERS_PATH = tmp_path / "snapshot_voters.csv"
+    monkeypatch.setattr(mod.engagement_jobs, "SNAPSHOT_VOTERS_PATH", tmp_path / "snapshot_voters.csv")
 
     calls = {"count": 0}
 
@@ -142,7 +155,7 @@ def test_sync_snapshot_writes_votes(monkeypatch, tmp_path):
 
 def test_sync_galxe_writes_points(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.engagement_jobs.GALXE_LOYALTY_POINTS_PATH = tmp_path / "galxe_loyalty_points.csv"
+    monkeypatch.setattr(mod.engagement_jobs, "GALXE_LOYALTY_POINTS_PATH", tmp_path / "galxe_loyalty_points.csv")
 
     def fake_post(url, json=None, headers=None):
         cursor = json["variables"]["cursor"]
@@ -184,34 +197,9 @@ def test_sync_galxe_writes_points(monkeypatch, tmp_path):
     ]
 
 
-def test_sync_gitpoap_writes_holders(monkeypatch, tmp_path):
-    mod = _load_module()
-    mod.engagement_jobs.GITPOAP_EVENTS_PATH = tmp_path / "gitpoap_events.csv"
-    mod.engagement_jobs.GITPOAP_HOLDERS_PATH = tmp_path / "gitpoap_holders.csv"
-    mod.engagement_jobs.GITPOAP_EVENTS_PATH.write_text("ID,Name\n1,evt1\n2,evt2\n")
-
-    class FakeSession:
-        def mount(self, *args, **kwargs):
-            return None
-
-        def get(self, url):
-            if url.endswith("/1/addresses"):
-                return DummyResp(200, {"addresses": ["0xabc"]})
-            return DummyResp(200, {"addresses": ["0xdef"]})
-
-    monkeypatch.setattr(mod.engagement_jobs.requests, "Session", FakeSession)
-    mod.engagement_jobs.sync_gitpoap()
-
-    rows = list(csv.DictReader(mod.engagement_jobs.GITPOAP_HOLDERS_PATH.open()))
-    assert rows == [
-        {"Address": "0xabc", "EventID": "1", "EventName": "evt1"},
-        {"Address": "0xdef", "EventID": "2", "EventName": "evt2"},
-    ]
-
-
 def test_sync_ssv_verified_writes_holders(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.experience_jobs.SSV_VERIFIED_OPERATORS_PATH = tmp_path / "ssv-verified-operators.csv"
+    monkeypatch.setattr(mod.experience_jobs, "SSV_VERIFIED_OPERATORS_PATH", tmp_path / "ssv-verified-operators.csv")
 
     def fake_get(url, timeout=None):
         assert "ssv.network" in url
@@ -244,11 +232,11 @@ def test_write_csv_uses_lf_line_endings(tmp_path):
     assert data == b"Address,VoteCount\n0xabc,1\n"
 
 
-def test_run_sync_requires_configured_rpc_env():
+def test_run_sync_requires_configured_rpc_env(monkeypatch):
     mod = _load_module()
-    mod.MAINNET_RPC_URL = ""
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "")
     called = {"value": False}
-    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
 
     try:
         mod.run_sync(["aragon"])
@@ -286,9 +274,9 @@ def test_rpc_chain_id_uses_json_rpc_probe(monkeypatch):
 
 def test_run_sync_verifies_rpc_chain_id(monkeypatch):
     mod = _load_module()
-    mod.MAINNET_RPC_URL = "https://mainnet.example"
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "https://mainnet.example")
     called = {"value": False}
-    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
 
     monkeypatch.setattr(
         mod,
@@ -302,9 +290,9 @@ def test_run_sync_verifies_rpc_chain_id(monkeypatch):
 
 def test_run_sync_rejects_wrong_rpc_chain_id(monkeypatch):
     mod = _load_module()
-    mod.MAINNET_RPC_URL = "https://hoodi.example"
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "https://hoodi.example")
     called = {"value": False}
-    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
 
     monkeypatch.setattr(
         mod,
@@ -406,12 +394,10 @@ def test_request_performance_report_retries_then_succeeds(monkeypatch):
 
 def test_sync_mainnet_performance_writes_eligible_ids(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.experience_jobs.ELIGIBLE_NODE_OPERATORS_MAINNET_PATH = (
-        tmp_path / "eligible_node_operators_mainnet.json"
-    )
-    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS = "0x" + "12" * 20
-    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK = 100
-    mod.experience_jobs.MAINNET_CUTOFF_BLOCK = 200
+    monkeypatch.setattr(mod.experience_jobs, "ELIGIBLE_NODE_OPERATORS_MAINNET_PATH", tmp_path / "eligible_node_operators_mainnet.json")
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_ADDRESS", "0x" + "12" * 20)
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK", 100)
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_CUTOFF_BLOCK", 200)
 
     def fake_fetch_cids(w3, address, from_block, to_block):
         assert address == mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS
@@ -630,9 +616,9 @@ def test_mainnet_activity_qualification_is_permanent():
     assert mod.experience_jobs._historically_active_operator_ids(frames) == {"42"}
 
 
-def test_get_event_logs_splits_range_on_failure():
+def test_get_event_logs_uses_configured_chunks(monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = 5
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", 5)
 
     class FakeEvent:
         def __init__(self):
@@ -649,9 +635,9 @@ def test_get_event_logs_splits_range_on_failure():
     assert event.calls == [(0, 4), (5, 9)]
 
 
-def test_get_event_logs_fails_fast_on_connection_error():
+def test_get_event_logs_fails_fast_on_connection_error(monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = None
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", None)
 
     class FakeEvent:
         def __init__(self):
@@ -673,9 +659,9 @@ def test_get_event_logs_fails_fast_on_connection_error():
     assert event.calls == [(0, 9)]
 
 
-def test_get_event_logs_logs_http_error_body(capsys):
+def test_get_event_logs_logs_http_error_body(capsys, monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = None
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", None)
 
     class FakeEvent:
         def get_logs(self, from_block=None, to_block=None):
