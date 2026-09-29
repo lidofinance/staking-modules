@@ -34,6 +34,8 @@ def mod(tmp_path):
 
 def _write_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.name.startswith("node_operator_owners_"):
+        value = {operator_id: [addr] for operator_id, addr in value.items()}
     path.write_text(json.dumps(value))
 
 

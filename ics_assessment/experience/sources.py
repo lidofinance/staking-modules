@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from ics_assessment.data_utils import read_csv_rows
+from ics_assessment.data_utils import normalize_evm_addresses, read_csv_rows
 
 
 @dataclass(frozen=True)
@@ -27,18 +27,27 @@ def csv_matches(addresses: set[str], csv_file: str, base_dir: Path) -> list[str]
 
 def matched_node_operator_ids(addresses: set[str], owners_path: Path) -> list[str]:
     node_operators = load_owner_map(owners_path)
+    addresses = normalize_evm_addresses(addresses)
     return sorted(
         {
             no_id
-            for no_id, address in node_operators.items()
-            if address.lower() in addresses
+            for no_id, operator_addresses in node_operators.items()
+            if operator_addresses & addresses
         }
     )
 
 
-def load_owner_map(owners_path: Path) -> dict[str, str]:
+def load_owner_map(owners_path: Path) -> dict[str, set[str]]:
     with owners_path.open("r", encoding="utf-8") as file:
-        return json.load(file)
+        operators = json.load(file)
+    result = {}
+    for operator_id, addresses in operators.items():
+        if not isinstance(addresses, list):
+            raise ValueError(
+                "Run 'python main.py sync node-owners' to regenerate manager and reward addresses."
+            )
+        result[operator_id] = normalize_evm_addresses(addresses)
+    return result
 
 
 def load_hoodi_eligible_ids(sources: ExperienceSources) -> set[str]:
@@ -51,11 +60,11 @@ def load_mainnet_eligible_ids(sources: ExperienceSources) -> set[str]:
         return set(json.load(file))
 
 
-def load_hoodi_owner_map(sources: ExperienceSources) -> dict[str, str]:
+def load_hoodi_owner_map(sources: ExperienceSources) -> dict[str, set[str]]:
     return load_owner_map(sources.node_operator_owners_hoodi_path)
 
 
-def load_mainnet_owner_map(sources: ExperienceSources) -> dict[str, str]:
+def load_mainnet_owner_map(sources: ExperienceSources) -> dict[str, set[str]]:
     return load_owner_map(sources.node_operator_owners_mainnet_path)
 
 

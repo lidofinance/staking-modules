@@ -87,3 +87,8 @@ exclude_lints = [
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
+
+[bind_json]
+# Only the deployment params structs are (de)serialized as JSON, @see script/utils/JsonBindings.sol.
+out = "script/utils/JsonBindings.sol"
+include = ["*DeployBase*", "*DeployCSM0x02Base*", "*DeployTwoPhase*"]

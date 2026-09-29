@@ -18,6 +18,9 @@ from ics_assessment.config import (
 )
 
 
+DEFAULT_LOG_CHUNK_SIZE = 10_000
+
+
 TRANSFER_EVENT_ABI = [
     {
         "type": "event",
@@ -116,7 +119,9 @@ def _fetch_logs(
                     )
             raise
 
-    if chunk_size is None or (to_block - from_block + 1) <= chunk_size:
+    if chunk_size is None:
+        chunk_size = DEFAULT_LOG_CHUNK_SIZE
+    if (to_block - from_block + 1) <= chunk_size:
         print(f"[sync] {label}: fetching {_format_block_range(from_block, to_block)}")
         logs = run_fetch(from_block, to_block)
         print(f"[sync] {label}: fetched {len(logs)} log(s) for {_format_block_range(from_block, to_block)}")
@@ -143,9 +148,16 @@ def _fetch_logs(
     return logs
 
 
-def get_event_logs(event, from_block: int, to_block: int, label: str = "event logs"):
+def get_event_logs(
+    event,
+    from_block: int,
+    to_block: int,
+    label: str = "event logs",
+    argument_filters: dict | None = None,
+):
+    extra = {"argument_filters": argument_filters} if argument_filters else {}
     return _fetch_logs(
-        lambda start, end: event.get_logs(from_block=start, to_block=end),
+        lambda start, end: event.get_logs(from_block=start, to_block=end, **extra),
         from_block,
         to_block,
         label,
@@ -177,7 +189,6 @@ JOB_ORDER = [
     "aragon",
     "snapshot",
     "galxe",
-    "gitpoap",
     "protocol-guild",
     "obol-techne",
     "ssv-verified",
@@ -191,7 +202,6 @@ JOBS = {
     "aragon": engagement_jobs.sync_aragon,
     "snapshot": engagement_jobs.sync_snapshot,
     "galxe": engagement_jobs.sync_galxe,
-    "gitpoap": engagement_jobs.sync_gitpoap,
     "protocol-guild": engagement_jobs.sync_protocol_guild,
     "obol-techne": experience_jobs.sync_obol_techne,
     "ssv-verified": experience_jobs.sync_ssv_verified,
@@ -307,7 +317,7 @@ def run_sync(targets: list[str], chunk_size: int | None = None) -> int:
 
 def main(argv: list[str] | None = None, *, chunk_size: int | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sync ICS assessment snapshot sources.")
-    parser.add_argument("--chunk-size", type=int, default=chunk_size, help="Optional log-fetch block chunk size")
+    parser.add_argument("--chunk-size", type=int, default=chunk_size, help="Log-fetch block chunk size (default: 10000)")
     parser.add_argument("targets", nargs="*", help="Sync target(s) or 'all'")
     args = parser.parse_args(argv)
     return run_sync(args.targets, chunk_size=args.chunk_size)
