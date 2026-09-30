@@ -42,6 +42,8 @@ Commonly edited constants:
   - `GNOSIS_CUTOFF_BLOCK`
 - Snapshot cutoff:
   - `SNAPSHOT_VOTE_TIMESTAMP`
+- Human Passport cutoff (UTC):
+  - `HUMAN_PASSPORT_CUTOFF_DATE`
 - High Signal window:
   - `HIGH_SIGNAL_START_DATE`
   - `HIGH_SIGNAL_END_DATE`
@@ -124,7 +126,20 @@ python main.py sync snapshot galxe
 python main.py sync --chunk-size 50000 aragon
 python main.py sync --chunk-size 50000 mainnet-performance
 python main.py sync --chunk-size 10000 circles
+
+# Infura: use a large range for sparse logs if the endpoint supports it
+python main.py sync --chunk-size 1000000000 aragon
 ```
+
+Log fetches default to 10,000-block chunks for compatibility with providers
+that restrict block ranges. For Infura endpoints that accept large ranges,
+increase `--chunk-size` (or set `ICS_SYNC_CHUNK_SIZE`) to avoid unnecessary RPC
+requests for sparse logs. A chunk size at least as large as the source's full
+block interval makes each log query a single `eth_getLogs` request. Provider
+response-size/result-count limits and timeouts still apply; reduce the chunk
+size if the endpoint rejects the query. `0` is invalid, not an unlimited mode.
+The setting applies to all selected targets, so run sources separately when
+their RPC providers need different limits.
 
 Supported sync targets:
 
@@ -319,7 +334,12 @@ Live at runtime:
 - High Signal, if `HIGH_SIGNAL_API_KEY` is set. Lido High Signal is fetched by
   address, then SSV High Signal is fetched by the resolved High Signal username.
   The Engagement score uses the higher of the two scores.
-- Human Passport, if `HUMAN_PASSPORT_API_KEY` is set
+- Human Passport, if `HUMAN_PASSPORT_API_KEY` is set: fetches the most recent
+  score at or before `HUMAN_PASSPORT_CUTOFF_DATE` using the historical API.
+  No Passport snapshot is saved. An address with no score at cutoff (404)
+  contributes no Passport points; other HTTP errors abort the assessment.
+  The API key needs historical view permission. Coordinate rate limits with
+  Humanity before sweeping applicants; requests retain the 8-second delay.
 
 ## Environment Variables
 

@@ -220,6 +220,10 @@ def test_fetch_high_signal_max_keeps_lido_when_ssv_missing(monkeypatch):
 
 def test_fetch_high_signal_max_ignores_scores_after_cutoff(monkeypatch):
     mod = _load_sources_module(monkeypatch)
+    # The response fixture belongs to this cutoff, independently of the current round.
+    from datetime import datetime
+
+    monkeypatch.setattr(mod, "HIGH_SIGNAL_END_DATE", datetime(2026, 6, 9))
 
     def fake_get(url, params=None, timeout=None):
         return types.SimpleNamespace(

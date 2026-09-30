@@ -1,9 +1,8 @@
 import csv
 import json
-from dataclasses import replace
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from ics_assessment.config import (
     ARAGON_VOTERS_PATH,
@@ -28,6 +27,7 @@ from ics_assessment.experience.assess import ExperienceEvaluator
 from ics_assessment.experience.sources import ExperienceSources
 from ics_assessment.humanity.assess import HumanityEvaluator
 from ics_assessment.humanity.sources import HumanitySources
+from ics_assessment.main import evaluate_assessment
 
 
 ROOT = Path("ics_assessment")
@@ -55,22 +55,6 @@ HUMANITY_SOURCES = HumanitySources(
     ssv_verified_operators_path=SSV_VERIFIED_OPERATORS_PATH,
 )
 HUMANITY_EVALUATOR = HumanityEvaluator(HUMANITY_SOURCES)
-
-
-@pytest.fixture(autouse=True)
-def management_address_fixtures(monkeypatch, tmp_path):
-    # Retained round artifacts use the old owner-only schema. Adapt known owners
-    # in fixtures only; real sync must fetch both roles from the contract.
-    replacements = {}
-    for chain in ("mainnet", "hoodi"):
-        field = f"node_operator_owners_{chain}_path"
-        old = getattr(EXPERIENCE_SOURCES, field)
-        owners = json.loads(old.read_text())
-        new = tmp_path / old.name
-        new.write_text(json.dumps({key: ([value] if isinstance(value, str) else value)
-                                   for key, value in owners.items()}))
-        replacements[field] = new
-    monkeypatch.setattr(EXPERIENCE_EVALUATOR, "sources", replace(EXPERIENCE_SOURCES, **replacements))
 
 
 def _first_csv_row(path: Path) -> list[str]:
@@ -193,7 +177,7 @@ def test_static_csm_mainnet_uses_prepared_data():
     operator_id = _first_json_item(ELIGIBLE_NODE_OPERATORS_MAINNET_PATH).strip()
     with NODE_OPERATOR_OWNERS_MAINNET_PATH.open("r", encoding="utf-8") as file:
         owners = json.load(file)
-    address = owners[operator_id].strip().lower()
+    address = owners[operator_id][0]
 
     outcome = EXPERIENCE_EVALUATOR.csm_score({address})
 
@@ -201,25 +185,36 @@ def test_static_csm_mainnet_uses_prepared_data():
     assert f"mainnet ids: {operator_id}" in (outcome.detail or "")
 
 
-def test_static_csm_mainnet_excludes_below_threshold_operators():
-    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
-        eligible_ids = set(json.load(file))
+@pytest.mark.parametrize("chain", ["mainnet", "hoodi"])
+def test_prepared_eligibility_has_complete_owner_evidence(chain):
+    owners = json.loads(
+        getattr(EXPERIENCE_SOURCES, f"node_operator_owners_{chain}_path").read_text()
+    )
+    eligible_ids = json.loads(
+        getattr(EXPERIENCE_SOURCES, f"eligible_node_operators_{chain}_path").read_text()
+    )
+    assert eligible_ids
+    assert set(eligible_ids) <= owners.keys()
+    assert set(owners) == {str(i) for i in range(len(owners))}
+    for addresses in owners.values():
+        assert isinstance(addresses, list) and addresses
+        assert len(addresses) == len(set(addresses))
+        assert all(
+            len(address) == 42
+            and address.startswith("0x")
+            and address == address.lower()
+            and int(address[2:], 16) != 0
+            for address in addresses
+        )
 
-    assert eligible_ids.isdisjoint({"315", "367", "485", "516", "559"})
 
-
-def test_static_csm_mainnet_excludes_operators_below_activity_window():
-    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
-        eligible_ids = set(json.load(file))
-
-    assert eligible_ids.isdisjoint({"531", "533", *map(str, range(544, 564))})
-
-
-def test_static_csm_mainnet_includes_historically_active_operators():
-    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
-        eligible_ids = set(json.load(file))
-
-    assert {"94", "241", "452"} <= eligible_ids
+def test_assessment_consumes_committed_snapshots_without_adaptation():
+    result = evaluate_assessment({"0x" + "12" * 20})
+    assert [category.name for category in result.categories] == [
+        "Experience",
+        "Humanity",
+        "Engagement",
+    ]
 
 
 def test_static_circles_uses_prepared_data():

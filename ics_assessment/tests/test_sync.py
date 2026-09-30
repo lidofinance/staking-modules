@@ -394,6 +394,7 @@ def test_request_performance_report_retries_then_succeeds(monkeypatch):
 
 def test_sync_mainnet_performance_writes_eligible_ids(monkeypatch, tmp_path):
     mod = _load_module()
+    monkeypatch.setattr(mod.experience_jobs, "REQUIRED_ACTIVITY_WINDOW_MAINNET", 30)
     monkeypatch.setattr(mod.experience_jobs, "ELIGIBLE_NODE_OPERATORS_MAINNET_PATH", tmp_path / "eligible_node_operators_mainnet.json")
     monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_ADDRESS", "0x" + "12" * 20)
     monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK", 100)
@@ -560,8 +561,9 @@ def test_mainnet_performance_requires_duty_evidence():
     assert mod.experience_jobs._eligible_operator_ids_from_report(report) == set()
 
 
-def test_mainnet_eligibility_requires_30_days_and_latest_performance():
+def test_mainnet_eligibility_requires_30_days_and_latest_performance(monkeypatch):
     mod = _load_module()
+    monkeypatch.setattr(mod.experience_jobs, "REQUIRED_ACTIVITY_WINDOW_MAINNET", 30)
     reports = [
         [
             {
