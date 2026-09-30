@@ -192,8 +192,7 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);

@@ -147,6 +147,7 @@ struct CuratedDeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    uint256 defaultSlashingPenalty;
     address penaltiesManager;
     // Curated gates
     CuratedGateConfig[] curatedGates;
@@ -269,7 +270,8 @@ abstract contract DeployBase is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee,
+                    defaultSlashingPenalty: config.defaultSlashingPenalty
                 });
             parametersRegistry = ParametersRegistry(
                 _deployProxy(
@@ -309,6 +311,7 @@ abstract contract DeployBase is Script {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
+                secondsPerSlot: uint64(config.secondsPerSlot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -629,10 +632,6 @@ abstract contract DeployBase is Script {
 
             curatedModule.grantRole(curatedModule.VERIFIER_ROLE(), address(verifier));
             curatedModule.grantRole(curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier));
-            curatedModule.grantRole(
-                curatedModule.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                config.easyTrackEVMScriptExecutor
-            );
 
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();

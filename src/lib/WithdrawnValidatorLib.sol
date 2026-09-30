@@ -22,7 +22,6 @@ library WithdrawnValidatorLib {
 
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
-        bool slashed,
         ModuleLinearStorage.BaseModuleStorage storage $
     )
         external
@@ -37,25 +36,14 @@ library WithdrawnValidatorLib {
 
             uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
             if ($.isValidatorWithdrawn[pointer]) continue;
-            if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
-            if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
+            // Only `reportValidatorSlashing` may charge a penalty, and it marks the key as slashed first.
+            if (info.slashingPenalty != 0 && !$.isValidatorSlashed[pointer]) {
+                revert IBaseModule.SlashingPenaltyIsNotApplicable();
+            }
 
             _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
-            // Any withdrawal report accounts for the key losses, hence resolves the slashing.
-            if ($.isValidatorSlashed[pointer]) {
-                uint256 unresolved = $.unresolvedSlashedValidators[info.nodeOperatorId];
-                // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
-                // NOTE: The counter is per Node Operator, so such a legacy slashing resolves a newer one instead.
-                if (unresolved != 0) {
-                    unchecked {
-                        --unresolved;
-                    }
-                    $.unresolvedSlashedValidators[info.nodeOperatorId] = unresolved;
-                    emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(info.nodeOperatorId, unresolved);
-                }
-            }
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {
@@ -69,10 +57,6 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         uint256 keyConfirmedBalance
     ) private {
-        if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
-            revert IBaseModule.InvalidWithdrawnValidatorInfo();
-        }
-
         // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
         // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
         if (validatorInfo.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
@@ -94,8 +78,6 @@ library WithdrawnValidatorLib {
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
             keyIndex: validatorInfo.keyIndex,
-            exitBalance: validatorInfo.exitBalance,
-            slashingPenalty: validatorInfo.slashingPenalty,
             pubkey: pubkey
         });
     }
@@ -108,29 +90,33 @@ library WithdrawnValidatorLib {
         uint256 keyConfirmedBalance
     ) private {
         uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
-        uint256 penaltyMultiplier = _getPenaltyMultiplier(
-            _clamp(validatorInfo.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
-        );
+        uint256 penaltyScale = Math.max(validatorInfo.exitBalance, minExpectedBalance);
         uint256 penaltySum;
 
         if (penaltyInfo.strikesPenalty.isValue) {
-            penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
+            penaltySum = scalePenalty(penaltyInfo.strikesPenalty.value, penaltyScale);
         }
 
-        if (validatorInfo.isSlashed && validatorInfo.slashingPenalty > 0) {
-            // Slashing penalty doesn't scale because all the losses are already accounted.
-            penaltySum += validatorInfo.slashingPenalty;
-            // If the validator is slashed but slashingPenalty is not set we do a best effort to penalize
-            // the Node Operator by comparing the exit balance with the minimum expected balance as in a regular withdrawal case.
-            // This allows for a permissionless method to report slashed validators via Verifier.sol without upgrading the module.
-            // Such method will deliver a less precise penalty compared to the case when the exact slashing penalty is set, but it is better than not penalizing at all.
-        } else if (validatorInfo.exitBalance < minExpectedBalance) {
-            penaltySum += minExpectedBalance - validatorInfo.exitBalance;
+        // The slashing penalty accounts for all the losses, so the balance shortage is not charged on top of it.
+        if (validatorInfo.slashingPenalty > 0) {
+            penaltySum += scalePenalty(validatorInfo.slashingPenalty, penaltyScale);
+        } else {
+            penaltySum += Math.saturatingSub(minExpectedBalance, validatorInfo.exitBalance);
         }
 
         if (penaltySum > 0) {
             IBaseModule(address(this)).ACCOUNTING().penalize(validatorInfo.nodeOperatorId, penaltySum);
         }
+    }
+
+    function scalePenalty(uint256 penalty, uint256 balance) internal pure returns (uint256) {
+        balance = _clamp(
+            balance,
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE
+        );
+        uint256 multiplier = _getPenaltyMultiplier(balance);
+        return _scalePenaltyByMultiplier(penalty, multiplier);
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.

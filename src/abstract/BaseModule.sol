@@ -22,6 +22,7 @@ import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 import { StakeTracker } from "../lib/StakeTracker.sol";
+import { ValidatorBalanceLimits } from "../lib/ValidatorBalanceLimits.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
@@ -41,10 +42,13 @@ abstract contract BaseModule is
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
     bytes32 public constant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE");
-    bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
-        keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
+
+    /// @dev How long bond claims stay restricted after a slashed key becomes withdrawable,
+    ///      giving the committee time to apply extra penalties.
+    uint256 public constant SLASHING_SETTLE_DELAY = 14 days;
+
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -338,7 +342,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external {
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         BaseModuleStorage storage $ = _baseStorage();
@@ -346,20 +350,31 @@ abstract contract BaseModule is
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if ($.isValidatorSlashed[pointer]) revert ValidatorSlashingAlreadyReported();
-        $.isValidatorSlashed[pointer] = true;
-        // A slashing reported after the withdrawal of the key has nothing left to resolve.
-        if (!$.isValidatorWithdrawn[pointer]) {
-            uint256 unresolved;
-            unchecked {
-                unresolved = $.unresolvedSlashedValidators[nodeOperatorId] + 1;
-            }
-            $.unresolvedSlashedValidators[nodeOperatorId] = unresolved;
-            emit UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, unresolved);
+
+        if ($.isValidatorWithdrawn[pointer]) revert SlashingPenaltyIsNotApplicable();
+
+        if (!$.isValidatorSlashed[pointer]) {
+            $.isValidatorSlashed[pointer] = true;
+
+            bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
+            emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
         }
 
-        bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
-        emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
+        uint256 deadline = block.timestamp + timeToWithdrawable + SLASHING_SETTLE_DELAY;
+        if (deadline > $.slashingSettleDeadline[nodeOperatorId]) {
+            $.slashingSettleDeadline[nodeOperatorId] = deadline;
+            emit SlashingSettleDeadlineChanged(nodeOperatorId, deadline);
+        }
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            // The tracked key balance stands for the pre-slashing one to scale the penalty by.
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer],
+            slashingPenalty: PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(nodeOperatorId))
+        });
+        _reportWithdrawnValidators(validatorInfos);
     }
 
     /// @inheritdoc IBaseModule
@@ -383,15 +398,9 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
-        _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
-        _reportWithdrawnValidators(validatorInfos, true);
-    }
-
-    /// @inheritdoc IBaseModule
     function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE);
-        _reportWithdrawnValidators(validatorInfos, false);
+        _reportWithdrawnValidators(validatorInfos);
     }
 
     /// @inheritdoc IBaseModule
@@ -510,8 +519,8 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256) {
-        return _baseStorage().unresolvedSlashedValidators[nodeOperatorId];
+    function getSlashingSettleDeadline(uint256 nodeOperatorId) external view returns (uint256) {
+        return _baseStorage().slashingSettleDeadline[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule
@@ -652,12 +661,12 @@ abstract contract BaseModule is
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
-    function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
+    function _reportWithdrawnValidators(WithdrawnValidatorInfo[] memory validatorInfos) internal {
         (
             uint256[] memory touchedOperatorIds,
             uint256[] memory trackedBalanceDecreases,
             uint256 touchedCount
-        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
+        ) = WithdrawnValidatorLib.processBatch(validatorInfos, _baseStorage());
 
         if (touchedCount == 0) return;
 

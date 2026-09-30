@@ -77,6 +77,7 @@ contract DeployHoodi is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.defaultSlashingPenalty = 1 ether;
         config.penaltiesManager = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // Curated gates

@@ -584,22 +584,19 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         validatorInfos[1] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 1,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         validatorInfos[2] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 2,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         }); // Large CL balance drop, that doesn't change the unbonded count.
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);

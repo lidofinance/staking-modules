@@ -156,8 +156,8 @@ contract InvariantAsserts is Test {
         );
     }
 
-    /// @dev Only holds for the state built from scratch, since the slashings reported before the counter was
-    ///      introduced are not counted.
+    /// @dev Only holds for the state built from scratch, since the slashings reported before the settlement on the
+    ///      slashing report was introduced might be left pending a withdrawal.
     function assertModuleSlashings(IBaseModule module) public {
         if (skipInvariants()) return;
         if (skipLongForkTest()) return;
@@ -165,19 +165,12 @@ contract InvariantAsserts is Test {
         uint256 noCount = module.getNodeOperatorsCount();
 
         for (uint256 noId = 0; noId < noCount; ++noId) {
-            uint256 unresolvedSlashings;
             uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
 
             for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
-                if (module.isValidatorWithdrawn(noId, keyIndex)) continue;
-                if (module.isValidatorSlashed(noId, keyIndex)) ++unresolvedSlashings;
+                if (!module.isValidatorSlashed(noId, keyIndex)) continue;
+                assertTrue(module.isValidatorWithdrawn(noId, keyIndex), "assert slashed validator is withdrawn");
             }
-
-            assertEq(
-                module.getNodeOperatorUnresolvedSlashedValidators(noId),
-                unresolvedSlashings,
-                "assert unresolved slashings"
-            );
         }
     }
 

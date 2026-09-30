@@ -77,6 +77,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.defaultSlashingPenalty = 1 ether;
         config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // CircuitBreaker
