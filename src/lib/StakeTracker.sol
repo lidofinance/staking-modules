@@ -9,13 +9,9 @@ import { IBaseModule, NodeOperator } from "../interfaces/IBaseModule.sol";
 import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
-import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 
-/// @dev Centralizes tracked stake updates for operator extra balances, total extra stake, and key balance transitions.
-///      External deployment-linked library used by BaseModule-compatible modules.
+/// @dev Internal primitives for key balances, operator extra balances, and total module stake accounting.
 library StakeTracker {
-    using TransientUintUintMapLib for TransientUintUintMap;
-
     /// @dev Increases tracked operator extra balance and total extra stake by the given delta.
     function increaseOperatorBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
@@ -40,50 +36,46 @@ library StakeTracker {
         $.totalExtraStake -= decrementWei;
     }
 
-    /// @dev Applies per-key top-up allocations, updates key allocated balances, and aggregates stake deltas per operator.
-    function increaseKeyBalances(
+    /// @dev Replaces a key's allocated balance and applies the same delta to operator and module aggregates.
+    function setKeyAllocatedBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
-        uint256[] calldata operatorIds,
-        uint256[] calldata keyIndices,
-        uint256[] calldata allocations
-    ) external {
-        uint256[] memory allocatedOperatorIds = new uint256[](operatorIds.length);
-        uint256[] memory increments = new uint256[](operatorIds.length);
-        TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
-        uint256 touchedOperatorsCount;
+        uint256 operatorId,
+        uint256 keyIndex,
+        uint256 balanceWei
+    ) internal {
+        if (balanceWei > ValidatorBalanceLimits.MAX_EXTRA_BALANCE) revert IBaseModule.InvalidInput();
 
-        for (uint256 i; i < allocations.length; ++i) {
-            uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            // Current allocators cap per-key top-ups before they reach StakeTracker, so a partial
-            // application here is a defensive safeguard for unreachable-by-design inputs.
-            uint256 appliedIncrementWei = _increaseKeyAllocatedBalance(
-                $.keyAllocatedBalance,
-                operatorIds[i],
-                keyIndices[i],
-                allocationWei
-            );
-            if (appliedIncrementWei == 0) continue;
+        uint256 pointer = KeyPointerLib.keyPointer(operatorId, keyIndex);
+        uint256 oldBalance = $.keyAllocatedBalance[pointer];
+        if (oldBalance == balanceWei) return;
 
-            uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
-            if (operatorIndex == 0) {
-                operatorIndex = touchedOperatorsCount;
-                allocatedOperatorIds[operatorIndex] = operatorIds[i];
-                increments[operatorIndex] = appliedIncrementWei;
-                unchecked {
-                    ++touchedOperatorsCount;
-                }
-                // Store index + 1 so zero can remain the "not seen yet" sentinel in the transient map.
-                operatorIndexes.set(operatorIds[i], touchedOperatorsCount);
-            } else {
-                unchecked {
-                    increments[operatorIndex - 1] += appliedIncrementWei;
-                }
-            }
+        $.keyAllocatedBalance[pointer] = balanceWei;
+        emit IBaseModule.KeyAllocatedBalanceChanged(operatorId, keyIndex, balanceWei);
+
+        if (oldBalance < balanceWei) {
+            increaseOperatorBalance($, operatorId, balanceWei - oldBalance);
+        } else {
+            decreaseOperatorBalance($, operatorId, oldBalance - balanceWei);
         }
+    }
 
-        for (uint256 i; i < touchedOperatorsCount; ++i) {
-            increaseOperatorBalance($, allocatedOperatorIds[i], increments[i]);
+    /// @dev Applies a top-up to per-key allocated balance and returns the increment that fits under the key cap.
+    ///      Does not update operator or module aggregates; the caller must apply the returned increment separately.
+    function applyKeyTopUp(
+        mapping(uint256 => uint256) storage keyAllocatedBalance,
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 incrementWei
+    ) internal returns (uint256 appliedIncrementWei) {
+        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
+        uint256 oldAllocated = keyAllocatedBalance[pointer];
+        uint256 updated = Math.min(ValidatorBalanceLimits.MAX_EXTRA_BALANCE, oldAllocated + incrementWei);
+        unchecked {
+            appliedIncrementWei = updated - oldAllocated;
+        }
+        if (appliedIncrementWei > 0) {
+            keyAllocatedBalance[pointer] = updated;
+            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
         }
     }
 
@@ -113,27 +105,6 @@ library StakeTracker {
         if ($.operatorBalances[operatorId] == balanceWei) return;
         $.operatorBalances[operatorId] = balanceWei;
         emit IBaseModule.NodeOperatorBalanceUpdated(operatorId, getOperatorBalance($, operatorId));
-    }
-
-    function _increaseKeyAllocatedBalance(
-        mapping(uint256 => uint256) storage keyAllocatedBalance,
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 incrementWei
-    ) private returns (uint256 appliedIncrementWei) {
-        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 oldAllocated = keyAllocatedBalance[pointer];
-        uint256 updated = Math.min(
-            ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            oldAllocated + incrementWei
-        );
-        unchecked {
-            appliedIncrementWei = updated - oldAllocated;
-        }
-        if (appliedIncrementWei > 0) {
-            keyAllocatedBalance[pointer] = updated;
-            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
-        }
     }
 
     function _activeValidatorsCount(NodeOperator storage no) private view returns (uint256) {

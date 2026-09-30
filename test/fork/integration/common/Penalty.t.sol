@@ -3,7 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { PermitHelper } from "../../../helpers/Permit.sol";

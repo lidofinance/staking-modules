@@ -9,7 +9,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperatorManagementProperties, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties, NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem } from "./lib/TopUpQueueLib.sol";
@@ -18,8 +18,11 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
-import { StakeTracker } from "./lib/StakeTracker.sol";
+import { HighWatermarkBalanceTracker } from "./lib/HighWatermarkBalanceTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
+import { KeyPointerLib } from "./lib/KeyPointerLib.sol";
+import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -132,6 +135,7 @@ contract CSModule is ICSModule, BaseModule {
         );
 
         allocations = TopUpQueueOps.allocateDeposits({
+            $: _baseStorage(),
             topUpQueue: _topUpQueue(),
             maxDepositAmount: maxDepositAmount,
             pubkeys: pubkeys,
@@ -142,8 +146,6 @@ contract CSModule is ICSModule, BaseModule {
 
         if (allocations.length == 0) return allocations;
 
-        StakeTracker.increaseKeyBalances(_baseStorage(), operatorIds, keyIndices, allocations);
-
         _incrementModuleNonce();
     }
 
@@ -151,10 +153,22 @@ contract CSModule is ICSModule, BaseModule {
     function reportValidatorBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public override(BaseModule, IBaseModule) {
+        uint256 currentBalanceWei,
+        uint64 /* balanceSlot */
+    ) public override(IBaseModule) {
         _onlyEnabledTopUpQueue();
-        super.reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
+        _checkVerifierRole();
+
+        HighWatermarkBalanceTracker.updateValidatorBalance({
+            $: _baseStorage(),
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            currentBalanceWei: currentBalanceWei
+        });
+
+        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
+        // returned by the module. The distribution from `allocateDeposits` might change but still meets
+        // expectations of StakingRouter.
     }
 
     /// @inheritdoc ICSModule
@@ -277,6 +291,22 @@ contract CSModule is ICSModule, BaseModule {
         // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
         OperatorTracker.forgetCreator(nodeOperatorId);
         super._addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
+    }
+
+    function _getWithdrawalPenaltyBasis(
+        WithdrawnValidatorInfo memory info
+    ) internal view override returns (WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis) {
+        // Regular reports use the withdrawal amount. Automatic slashing reports use the tracked pre-slashing
+        // balance to scale the configured penalty. CSM requires either balance to be non-zero.
+        if (info.exitBalance == 0) revert ZeroExitBalance();
+
+        uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
+        uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + _baseStorage().keyConfirmedBalance[pointer];
+        if (info.exitBalance < balance) penaltyBasis.balanceLoss = balance - info.exitBalance;
+
+        penaltyBasis.penaltyMultiplier = WithdrawnValidatorLib._getPenaltyMultiplier(
+            Math.min(Math.max(info.exitBalance, balance), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
+        );
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.

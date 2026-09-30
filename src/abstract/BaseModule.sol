@@ -17,12 +17,12 @@ import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
-import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 import { StakeTracker } from "../lib/StakeTracker.sol";
 import { ValidatorBalanceLimits } from "../lib/ValidatorBalanceLimits.sol";
+import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
@@ -366,41 +366,20 @@ abstract contract BaseModule is
             emit SlashingSettleDeadlineChanged(nodeOperatorId, deadline);
         }
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
             // The tracked key balance stands for the pre-slashing one to scale the penalty by.
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer],
             slashingPenalty: PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(nodeOperatorId))
         });
-        _reportWithdrawnValidators(validatorInfos);
+        _reportWithdrawnValidator(info, true);
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public virtual {
-        _checkVerifierRole();
-
-        NodeOperatorOps.reportValidatorBalance({
-            $: _baseStorage(),
-            nodeOperatorId: nodeOperatorId,
-            keyIndex: keyIndex,
-            currentBalanceWei: currentBalanceWei
-        });
-
-        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
-        // returned by the module. The distribution from `allocateDeposits` might change but still meets
-        // expectations of StakingRouter.
-    }
-
-    /// @inheritdoc IBaseModule
-    function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
+    function reportRegularWithdrawnValidator(WithdrawnValidatorInfo calldata info) external {
         _checkRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE);
-        _reportWithdrawnValidators(validatorInfos);
+        _reportWithdrawnValidator(info, false);
     }
 
     /// @inheritdoc IBaseModule
@@ -661,28 +640,26 @@ abstract contract BaseModule is
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
-    function _reportWithdrawnValidators(WithdrawnValidatorInfo[] memory validatorInfos) internal {
-        (
-            uint256[] memory touchedOperatorIds,
-            uint256[] memory trackedBalanceDecreases,
-            uint256 touchedCount
-        ) = WithdrawnValidatorLib.processBatch(validatorInfos, _baseStorage());
-
-        if (touchedCount == 0) return;
+    function _reportWithdrawnValidator(WithdrawnValidatorInfo memory info, bool slashed) internal {
+        uint256 trackedBalanceDecrease = WithdrawnValidatorLib.processValidator({
+            penaltyBasis: _getWithdrawalPenaltyBasis(info),
+            info: info,
+            slashed: slashed,
+            $: _baseStorage()
+        });
 
         unchecked {
-            _baseStorage().totalWithdrawnValidators += touchedCount;
+            ++_baseStorage().totalWithdrawnValidators;
         }
-        for (uint256 i; i < touchedCount; ++i) {
-            StakeTracker.decreaseOperatorBalance(_baseStorage(), touchedOperatorIds[i], trackedBalanceDecreases[i]);
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: touchedOperatorIds[i],
-                incrementNonceIfUpdated: false
-            });
-        }
+        StakeTracker.decreaseOperatorBalance(_baseStorage(), info.nodeOperatorId, trackedBalanceDecrease);
+        _updateDepositableValidatorsCount({ nodeOperatorId: info.nodeOperatorId, incrementNonceIfUpdated: false });
 
         _incrementModuleNonce();
     }
+
+    function _getWithdrawalPenaltyBasis(
+        WithdrawnValidatorInfo memory info
+    ) internal view virtual returns (WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis);
 
     function _incrementModuleNonce() internal {
         unchecked {

@@ -181,34 +181,13 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
     }
 
     function withdrawKey(uint256 noId, uint256 /* keyIndex */) internal {
-        WithdrawnValidatorInfo[] memory withdrawalsInfo = new WithdrawnValidatorInfo[](1);
-        withdrawalsInfo[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawalsInfo = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0
         });
-        module.reportRegularWithdrawnValidators(withdrawalsInfo);
-    }
-
-    /// @dev Sets keyConfirmedBalance via reportValidatorBalance.
-    function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
-        uint256 current = module.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
-        if (confirmedBalance == current) return;
-
-        assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
-
-        module.reportValidatorBalance({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            currentBalanceWei: confirmedBalance + ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-        });
-
-        assertEq(
-            module.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
-            confirmedBalance,
-            "key confirmed balance must match target"
-        );
+        module.reportRegularWithdrawnValidator(withdrawalsInfo);
     }
 
     function getNodeOperatorSummary(uint256 noId) public view returns (NodeOperatorSummary memory) {

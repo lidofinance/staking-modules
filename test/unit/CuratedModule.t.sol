@@ -8,12 +8,14 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { StakeTracker } from "src/lib/StakeTracker.sol";
+import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
@@ -38,7 +40,27 @@ contract CuratedModuleHarness is CuratedModule {
         uint256[] calldata keyIndices,
         uint256[] calldata allocations
     ) external {
-        StakeTracker.increaseKeyBalances(_baseStorage(), operatorIds, keyIndices, allocations);
+        for (uint256 i; i < allocations.length; ++i) {
+            uint256 increment = StakeTracker.applyKeyTopUp(
+                _baseStorage().keyAllocatedBalance,
+                operatorIds[i],
+                keyIndices[i],
+                allocations[i]
+            );
+            StakeTracker.increaseOperatorBalance(_baseStorage(), operatorIds[i], increment);
+        }
+    }
+
+    function exposedLastBalanceCheckpointSlot(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint64) {
+        return _curatedStorage().lastBalanceCheckpointSlot[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    }
+
+    function exposedSetKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 balanceWei) external {
+        StakeTracker.setKeyAllocatedBalance(_baseStorage(), nodeOperatorId, keyIndex, balanceWei);
+    }
+
+    function exposedSetKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 balanceWei) external {
+        _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)] = balanceWei;
     }
 }
 
@@ -578,14 +600,13 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
 
         module.obtainDepositData(2, "");
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: firstId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0
         });
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(validatorInfos);
 
         bytes memory expectedKeys = module.getSigningKeys(firstId, 1, 1);
         (bytes memory pubkeys, ) = module.obtainDepositData(1, "");
@@ -1807,32 +1828,416 @@ contract CuratedSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelaye
 
 contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CuratedCommon {}
 
-contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, CuratedCommon {}
-
-contract CuratedKeyAllocatedBalance is ModuleKeyAllocatedBalance, CuratedCommon {}
-
-contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {
-    function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
+contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, CuratedCommon {
+    function test_reportValidatorSlashing_scalesBothPenaltiesByAllocatedBalance() public assertInvariants {
         uint256 noId = createNodeOperator();
-        cm.obtainDepositData(1, "");
+        module.obtainDepositData(1, "");
+        module.reportValidatorBalance(noId, 0, 64 ether, 10);
+        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 2016 ether);
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 4 ether);
 
-        // Allocate 20 ether via top-up, setting keyAllocatedBalance to 20 ether.
-        bytes memory key = cm.getSigningKeys(noId, 0, 1);
-        cm.allocateDeposits({
-            maxDepositAmount: 20 ether,
-            pubkeys: BytesArr(key),
-            keyIndices: UintArr(0),
-            operatorIds: UintArr(noId),
-            topUpLimits: UintArr(20 ether)
-        });
-        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether));
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(1 ether, true),
+                strikesPenalty: MarkedUint248(2 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(3 ether, true)
+            })
+        );
 
-        // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
-        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
-        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether), "keyAllocatedBalance must not decrease");
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        // Both configured penalties scale by 64/32; confirmed balance and legacy fees are ignored.
+        assertEq(accounting.getBond(noId), bondBefore - 12 ether);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+        assertEq(module.getTotalModuleStake(), 0);
     }
 
-    function test_reportValidatorBalance_afterTopUp_increasesStakeOnlyByDelta() public {
+    function test_reportValidatorSlashing_checkpointReducesPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
+        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
+        cm.syncValidatorBalance(noId, 1, 32 ether, 11);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+
+        module.reportValidatorSlashing(noId, 0, 0);
+        assertEq(accounting.getBond(noId), bondBefore - 64 ether);
+        module.reportValidatorSlashing(noId, 1, 0);
+
+        // A checkpoint replaces the allocation estimate used to scale the configured base slashing penalty.
+        assertEq(accounting.getBond(noId), bondBefore - 65 ether);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_isValidatorWithdrawn_DefaultFalse() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
+    }
+
+    function test_reportRegularWithdrawnValidator_finalizesWithZeroExitBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        (bytes memory pubkey, ) = module.obtainDepositData(1, "");
+        uint256 nonce = module.getNonce();
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, 0, pubkey);
+        module.reportRegularWithdrawnValidator(infos);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidator_appliesBaseStrikesPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(1 ether, true),
+                strikesPenalty: MarkedUint248(2 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(3 ether, true)
+            })
+        );
+        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 10 ether);
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0
+        });
+
+        module.reportRegularWithdrawnValidator(infos);
+
+        // Allocated extra balance is zero: apply the base strikes penalty, ignoring confirmed balance and legacy fees.
+        assertEq(accounting.getBond(noId), bondBefore - 2 ether);
+    }
+
+    function test_reportRegularWithdrawnValidator_scalesStrikesByAllocatedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator(3);
+        module.obtainDepositData(3, "");
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        // A top-up is already part of the penalty basis before any consensus-layer balance proof arrives.
+        cm.allocateDeposits(32.9 ether, BytesArr(key), UintArr(0), UintArr(noId), UintArr(32.9 ether));
+        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
+        module.reportValidatorBalance(noId, 2, 3000 ether, 10);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.1 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        for (uint256 i; i < infos.length; ++i) {
+            infos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: 0,
+                slashingPenalty: 0
+            });
+        }
+
+        for (uint256 i; i < infos.length; ++i) {
+            module.reportRegularWithdrawnValidator(infos[i]);
+        }
+
+        // Whole-ETH scaling: 64 ETH gives x2; both capped balances give x64. No withdrawal deficit is charged.
+        assertEq(accounting.getBond(noId), bondBefore - 13 ether);
+    }
+
+    function test_reportRegularWithdrawnValidator_checkpointReducesStrikesPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
+        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
+        cm.syncValidatorBalance(noId, 1, 32 ether, 11);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.1 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0
+        });
+        module.reportRegularWithdrawnValidator(infos);
+        assertEq(accounting.getBond(noId), bondBefore - 6.4 ether);
+
+        // The second key has a reported partial withdrawal: its penalty uses the reduced allocation.
+        // Even a larger terminal balance does not override the allocation estimate in Curated.
+        infos.keyIndex = 1;
+        infos.exitBalance = 2048 ether;
+        module.reportRegularWithdrawnValidator(infos);
+        assertEq(accounting.getBond(noId), bondBefore - 6.5 ether);
+    }
+
+    function test_reportRegularWithdrawnValidator_removesFullTrackedContribution() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        cm.allocateDeposits(10 ether, BytesArr(key), UintArr(0), UintArr(noId), UintArr(10 ether));
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+
+        module.reportRegularWithdrawnValidator(infos);
+
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_reportRegularWithdrawnValidator_eachReportIncrementsNonce() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        uint256 nonce = module.getNonce();
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](2);
+        infos[0] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 0, exitBalance: 0, slashingPenalty: 0 });
+        infos[1] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 1, exitBalance: 0, slashingPenalty: 0 });
+
+        module.reportRegularWithdrawnValidator(infos[0]);
+        module.reportRegularWithdrawnValidator(infos[1]);
+
+        assertEq(module.getNonce(), nonce + 2);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 2);
+        assertEq(module.getTotalModuleStake(), 0);
+    }
+
+    function test_reportRegularWithdrawnValidator_revertWhen_AlreadyWithdrawn() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+        module.reportRegularWithdrawnValidator(info);
+
+        vm.expectRevert(IBaseModule.ValidatorAlreadyWithdrawn.selector);
+        module.reportRegularWithdrawnValidator(info);
+    }
+
+    function test_reportRegularWithdrawnValidator_revertWhen_NoNodeOperator() public {
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        module.reportRegularWithdrawnValidator(infos);
+    }
+
+    function test_reportRegularWithdrawnValidator_revertWhen_InvalidKeyIndex() public {
+        uint256 noId = createNodeOperator();
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.reportRegularWithdrawnValidator(infos);
+    }
+
+    function test_reportRegularWithdrawnValidator_revertWhen_SlashingPenaltyPresent() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 1 ether
+        });
+
+        vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector);
+        module.reportRegularWithdrawnValidator(infos);
+    }
+
+    function test_reportRegularWithdrawnValidator_revertWhen_ValidatorSlashingReported() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0
+        });
+
+        vm.expectRevert(IBaseModule.ValidatorAlreadyWithdrawn.selector);
+        module.reportRegularWithdrawnValidator(info);
+    }
+}
+
+contract CuratedGetKeyAllocatedBalances is ModuleGetKeyAllocatedBalances, CuratedCommon {}
+
+contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
+    function test_exposedSetKeyAllocatedBalance_revertWhen_AboveCap() public {
+        uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        curatedHarness.exposedSetKeyAllocatedBalance(0, 0, cap + 1);
+    }
+
+    function test_reportValidatorBalance_updatesLastBalanceCheckpointSlotInCuratedStorage() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        uint256 pointer = KeyPointerLib.keyPointer(noId, 0);
+        bytes32 curatedStorageLocation = 0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
+        bytes32 mappingSlot = keccak256(abi.encode(pointer, curatedStorageLocation));
+        assertEq(uint256(vm.load(address(cm), mappingSlot)), 10);
+        assertEq(vm.load(address(cm), keccak256(abi.encode(pointer, uint256(14)))), bytes32(0));
+    }
+
+    function test_reportValidatorBalance_updatesTrackedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        uint256 nonceBefore = cm.getNonce();
+
+        vm.expectEmit(address(cm));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, 10 ether);
+        vm.expectEmit(address(cm));
+        emit IBaseModule.NodeOperatorBalanceUpdated(noId, 42 ether);
+        vm.expectEmit(address(cm));
+        emit ICuratedModule.ValidatorBalanceSynced(noId, 0, 10, 10 ether);
+
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(cm.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
+        assertEq(cm.getNodeOperatorBalance(noId), 42 ether);
+        assertEq(cm.getTotalModuleStake(), 42 ether);
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
+        assertEq(cm.getNonce(), nonceBefore);
+    }
+
+    function test_reportValidatorBalance_revertWhen_BalanceUnchanged() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        cm.reportValidatorBalance(noId, 0, 42 ether, 11);
+    }
+
+    function test_syncValidatorBalance_revertWhen_BalanceUnchanged() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 12);
+
+        cm.syncValidatorBalance(noId, 0, 41 ether, 12);
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 12);
+    }
+
+    function test_reportValidatorBalance_capsBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+
+        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE + 100 ether, 10);
+
+        uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(cap));
+        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+        assertEq(cm.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+    }
+
+    function test_reportValidatorBalance_revertWhen_DecreasingBalance() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        vm.expectRevert(ICuratedModule.BalanceDecreaseNotAllowed.selector);
+        cm.reportValidatorBalance(noId, 0, 41 ether, 11);
+    }
+
+    function test_syncValidatorBalance_decreasesTrackedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 52 ether, 10);
+        uint256 nonceBefore = cm.getNonce();
+
+        vm.expectEmit(address(cm));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, 10 ether);
+        vm.expectEmit(address(cm));
+        emit IBaseModule.NodeOperatorBalanceUpdated(noId, 42 ether);
+        vm.expectEmit(address(cm));
+        emit ICuratedModule.ValidatorBalanceSynced(noId, 0, 11, 10 ether);
+
+        cm.syncValidatorBalance(noId, 0, 42 ether, 11);
+
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(cm.getNodeOperatorBalance(noId), 42 ether);
+        assertEq(cm.getTotalModuleStake(), 42 ether);
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 11);
+        assertEq(cm.getNonce(), nonceBefore);
+    }
+
+    function test_syncValidatorBalance_normalizesBelowBaseToZero() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        cm.syncValidatorBalance(noId, 0, 1 ether, 11);
+
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(0));
+        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(cm.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_syncValidatorBalance_replacesLegacyAllocation() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
 
@@ -1844,15 +2249,109 @@ contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedC
             operatorIds: UintArr(noId),
             topUpLimits: UintArr(20 ether)
         });
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 0);
 
-        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 20 ether);
-        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 20 ether);
+        vm.expectRevert(ICuratedModule.BalanceDecreaseNotAllowed.selector);
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
 
-        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
+    }
 
-        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(25 ether));
-        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
-        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
+    function test_allocateDeposits_doesNotAdvanceBalanceCheckpointSlot() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        bytes memory key = cm.getSigningKeys(noId, 0, 1);
+        cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(5 ether)
+        });
+
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
+        assertGt(cm.getKeyAllocatedBalances(noId, 0, 1)[0], 10 ether);
+
+        cm.syncValidatorBalance(noId, 0, 42 ether, 11);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 11);
+    }
+
+    function test_syncValidatorBalance_canIncreaseTrackedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 52 ether, 11);
+
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether));
+        assertEq(cm.getNodeOperatorBalance(noId), 52 ether);
+        assertEq(cm.getTotalModuleStake(), 52 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_SameSlot() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        vm.expectRevert(ICuratedModule.StaleBalanceUpdate.selector);
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+    }
+
+    function test_syncValidatorBalance_revertWhen_StaleSlot() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+
+        vm.expectRevert(ICuratedModule.StaleBalanceUpdate.selector);
+        cm.syncValidatorBalance(noId, 0, 41 ether, 9);
+    }
+
+    function test_reportValidatorBalance_revertWhen_ValidatorWithdrawn() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        withdrawKey(noId, 0);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+    }
+
+    function test_syncValidatorBalance_revertWhen_ValidatorSlashed() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+        cm.reportValidatorSlashing(noId, 0, 0);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
+    }
+
+    function test_reportValidatorBalance_revertWhen_InvalidKeyIndex() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        cm.reportValidatorBalance(noId, 1, 42 ether, 10);
+    }
+
+    function test_reportValidatorBalance_revertWhen_NoNodeOperator() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        cm.reportValidatorBalance(0, 0, 42 ether, 10);
+    }
+
+    function test_reportValidatorBalance_revertWhen_NoRole() public {
+        expectRoleRevert(stranger, cm.VERIFIER_ROLE());
+        vm.prank(stranger);
+        cm.reportValidatorBalance(0, 0, 42 ether, 10);
+    }
+
+    function test_syncValidatorBalance_revertWhen_NoRole() public {
+        expectRoleRevert(stranger, cm.VERIFIER_ROLE());
+        vm.prank(stranger);
+        cm.syncValidatorBalance(0, 0, 42 ether, 10);
     }
 }
 
@@ -1880,11 +2379,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         createNodeOperator(1);
         cm.obtainDepositData(1, "");
 
-        setKeyConfirmedBalance(
-            0,
-            0,
-            ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-        );
+        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1);
 
         bytes memory key = cm.getSigningKeys(0, 0, 1);
         bytes[] memory pubkeys = BytesArr(key);
@@ -1908,14 +2403,13 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         cm.obtainDepositData(1, "");
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0
         });
-        cm.reportRegularWithdrawnValidators(validatorInfos);
+        cm.reportRegularWithdrawnValidator(validatorInfos);
 
         bytes memory key = cm.getSigningKeys(noId, 0, 1);
         uint256[] memory allocations = cm.allocateDeposits({
@@ -1992,7 +2486,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        setKeyConfirmedBalance(0, 0, cap - 10 ether);
+        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 10 ether, 1);
 
         bytes memory key = cm.getSigningKeys(0, 0, 1);
         uint256[] memory allocations = cm.allocateDeposits({
@@ -2014,7 +2508,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        setKeyConfirmedBalance(0, 0, cap - 2 ether);
+        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 2 ether, 1);
 
         vm.expectEmit(address(cm));
         emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, cap);
@@ -2032,7 +2526,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        setKeyConfirmedBalance(0, 0, cap);
+        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1);
 
         vm.recordLogs();
         // Current allocators cap per-key top-ups before they reach StakeTracker, so an over-cap allocation is
@@ -2093,7 +2587,7 @@ contract CuratedTotalModuleStake is CuratedCommon {
         });
 
         uint256 verifiedExtra = allocations[0] + 2 ether;
-        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra);
+        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra, 1);
 
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra);
         assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra);
@@ -2115,14 +2609,13 @@ contract CuratedTotalModuleStake is CuratedCommon {
 
         assertGt(module.getTotalModuleStake(), 32 ether);
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
             slashingPenalty: 0
         });
-        cm.reportRegularWithdrawnValidators(validatorInfos);
+        cm.reportRegularWithdrawnValidator(validatorInfos);
 
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(cm.getNodeOperatorBalance(noId), 0);
@@ -2136,6 +2629,31 @@ contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
+    function test_depositableValidatorsCountChanges_OnPenaltyFreeWithdrawal() public assertInvariants {
+        uint256 noId = createNodeOperator(7);
+        module.obtainDepositData(4, "");
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+
+        penalize(noId, BOND_SIZE * 3);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        for (uint256 i; i < infos.length; ++i) {
+            infos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: i == 2 ? ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE : 0,
+                slashingPenalty: 0
+            });
+        }
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        for (uint256 i; i < infos.length; ++i) {
+            module.reportRegularWithdrawnValidator(infos[i]);
+        }
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
+    }
+
     function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);

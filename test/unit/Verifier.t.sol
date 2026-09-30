@@ -396,8 +396,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
@@ -406,7 +405,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -505,8 +504,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(3 ether))
         );
 
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
@@ -515,7 +513,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -539,8 +537,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(2016 ether))
         );
 
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
@@ -549,7 +546,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -705,7 +702,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(0))
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector), "");
     }
 
     function _loadFixture() internal {
@@ -1709,7 +1706,17 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     }
 
     function test_processBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        // The balance fixture contains 64 ETH; the report must carry the slot of the proven state.
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.reportValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether,
+                fixture.data.recentBlock.header.slot.unwrap()
+            )
+        );
 
         verifier.processBalanceProof(fixture.data);
     }

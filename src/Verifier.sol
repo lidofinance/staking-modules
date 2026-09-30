@@ -197,7 +197,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             keyIndex: data.validator.keyIndex
         });
 
-        _reportSingleValidator(
+        MODULE.reportRegularWithdrawnValidator(
             WithdrawnValidatorInfo({
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
@@ -241,7 +241,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             keyIndex: data.validator.keyIndex
         });
 
-        _reportSingleValidator(
+        MODULE.reportRegularWithdrawnValidator(
             WithdrawnValidatorInfo({
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
@@ -269,7 +269,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.recentBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        MODULE.reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei),
+            data.recentBlock.header.slot.unwrap()
+        );
     }
 
     /// @inheritdoc IVerifier
@@ -298,13 +303,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.historicalBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
-    }
-
-    function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
-        WithdrawnValidatorInfo[] memory validatorExits = new WithdrawnValidatorInfo[](1);
-        validatorExits[0] = info;
-        MODULE.reportRegularWithdrawnValidators(validatorExits);
+        MODULE.reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei),
+            data.historicalBlock.header.slot.unwrap()
+        );
     }
 
     function _getParentBlockRoot(uint64 blockTimestamp) internal view returns (bytes32) {

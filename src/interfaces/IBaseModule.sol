@@ -123,6 +123,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
+    error ValidatorAlreadyWithdrawn();
 
     error InvalidAmount();
     error InvalidInput();
@@ -434,7 +435,13 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param currentBalanceWei Proven current validator balance in wei
-    function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
+    /// @param balanceSlot Slot of the beacon state containing the proven balance
+    function reportValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei,
+        uint64 balanceSlot
+    ) external;
 
     /// @notice Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
@@ -458,15 +465,16 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 keysCount
     ) external view returns (uint256[] memory balances);
 
-    /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
+    /// @notice Report a Node Operator's key as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:
     ///         - if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
     ///           block;
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
-    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
-    function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
+    /// @dev Reverts if the validator has already been reported as withdrawn.
+    /// @param info The withdrawn validator report
+    function reportRegularWithdrawnValidator(WithdrawnValidatorInfo calldata info) external;
 
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator

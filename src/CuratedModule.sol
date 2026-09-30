@@ -3,20 +3,34 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { SigningKeys } from "./lib/SigningKeys.sol";
+import { CheckpointBalanceTracker } from "./lib/CheckpointBalanceTracker.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
-import { StakeTracker } from "./lib/StakeTracker.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
+import { KeyPointerLib } from "./lib/KeyPointerLib.sol";
+import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
+    /// @custom:storage-location erc7201:CuratedModule
+    struct CuratedModuleStorage {
+        mapping(uint256 noKeyIndexPacked => uint64) lastBalanceCheckpointSlot;
+    }
+
     IMetaRegistry public immutable META_REGISTRY;
+
+    // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant CURATEDMODULE_STORAGE_LOCATION =
+        0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
 
     constructor(
         bytes32 moduleType,
@@ -134,6 +148,25 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    function syncValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei,
+        uint64 balanceSlot
+    ) external {
+        _checkVerifierRole();
+        CheckpointBalanceTracker.updateValidatorBalance({
+            $: _baseStorage(),
+            lastBalanceCheckpointSlot: _curatedStorage().lastBalanceCheckpointSlot,
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            currentBalanceWei: currentBalanceWei,
+            balanceSlot: balanceSlot,
+            allowDecrease: true
+        });
+    }
+
+    /// @inheritdoc ICuratedModule
     function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 oldWeight, uint256 newWeight) external {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
         if (newWeight == 0) {
@@ -209,9 +242,42 @@ contract CuratedModule is ICuratedModule, BaseModule {
         });
     }
 
+    /// @inheritdoc IBaseModule
+    function reportValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei,
+        uint64 balanceSlot
+    ) external {
+        _checkVerifierRole();
+        CheckpointBalanceTracker.updateValidatorBalance({
+            $: _baseStorage(),
+            lastBalanceCheckpointSlot: _curatedStorage().lastBalanceCheckpointSlot,
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            currentBalanceWei: currentBalanceWei,
+            balanceSlot: balanceSlot,
+            allowDecrease: false
+        });
+    }
+
     function _updateDepositInfo(uint256 nodeOperatorId) internal override {
         _metaRegistry().refreshOperatorWeight(nodeOperatorId);
         super._updateDepositInfo(nodeOperatorId);
+    }
+
+    function _getWithdrawalPenaltyBasis(
+        WithdrawnValidatorInfo memory info
+    ) internal view override returns (WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis) {
+        uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
+        uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + _baseStorage().keyAllocatedBalance[pointer];
+
+        // Use the allocation estimate before finalization, irrespective of the withdrawal amount.
+        // Proof ordering can affect this estimate and the final penalty, but scaling is capped at 2048 ETH.
+        penaltyBasis.penaltyMultiplier = WithdrawnValidatorLib._getPenaltyMultiplier(
+            Math.min(balance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
+        );
+        // Automatic balance loss remains zero; Curated shortages require manual penalties.
     }
 
     function _applyDepositableValidatorsCount(
@@ -244,10 +310,9 @@ contract CuratedModule is ICuratedModule, BaseModule {
             $: $,
             allocationAmount: maxDepositAmount,
             operatorIds: operatorIds,
+            keyIndices: keyIndices,
             topUpLimits: topUpLimits
         });
-
-        StakeTracker.increaseKeyBalances($, operatorIds, keyIndices, allocations);
     }
 
     function _validateTopUpPublicKeys(
@@ -271,6 +336,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _canRequestDepositInfoUpdate() internal view override {
         if (msg.sender != address(_accounting()) && msg.sender != address(_metaRegistry())) {
             revert SenderIsNotEligible();
+        }
+    }
+
+    function _curatedStorage() internal pure returns (CuratedModuleStorage storage $) {
+        assembly ("memory-safe") {
+            $.slot := CURATEDMODULE_STORAGE_LOCATION
         }
     }
 }
