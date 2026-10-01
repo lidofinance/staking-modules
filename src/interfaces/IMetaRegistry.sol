@@ -69,8 +69,8 @@ interface IMetaRegistry {
     error SameBondCurveWeight();
     error InvalidBondCurveWeight();
     error InvalidWeightBoostProvider();
-    error InvalidWeightBoostProviderMode();
     error WeightBoostProviderAlreadyAdded();
+    error TooManyWeightBoostProviders();
     error WeightBoostProviderNotFound();
     error SameWeightBoostProviderEnabled();
     error ModuleAddressNotCached();
@@ -82,6 +82,9 @@ interface IMetaRegistry {
 
     /// @notice Sentinel value representing no operator group.
     function NO_GROUP_ID() external view returns (uint256);
+
+    /// @notice Maximum number of weight boost providers that can be registered.
+    function MAX_WEIGHT_BOOST_PROVIDERS() external view returns (uint256);
 
     /// @notice Role allowed to set operator metadata.
     function SET_OPERATOR_INFO_ROLE() external view returns (bytes32);
@@ -103,12 +106,13 @@ interface IMetaRegistry {
     function getWeightBoostProvidersCount() external view returns (uint256 count);
 
     /// @notice Returns configured weight boost provider entry by ID.
+    /// @dev Reverts with `WeightBoostProviderNotFound` for an unknown ID.
     /// @param providerId Provider ID.
-    /// @return entry Configured boost provider entry; zeroed for an unknown ID.
+    /// @return entry Configured boost provider entry.
     function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry);
 
     /// @notice Returns configured weight boost provider mode by ID.
-    /// @dev An unknown ID reads as `PerNodeOperator`; check the entry's provider address first.
+    /// @dev Reverts with `WeightBoostProviderNotFound` for an unknown ID.
     /// @param providerId Provider ID.
     /// @return mode Provider aggregation mode.
     function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode);
@@ -187,6 +191,7 @@ interface IMetaRegistry {
     /// @dev Adding a provider is expected to be a rare operation and does not refresh cached weights automatically.
     ///      A full deposit info update is requested and affected groups must be refreshed asynchronously.
     ///      Added providers are enabled by default. Providers are append-only and can only be disabled.
+    ///      Reverts once MAX_WEIGHT_BOOST_PROVIDERS providers are registered; disabled providers keep their slot.
     /// @param provider Boost provider consumed during weight calculation.
     /// @param mode Provider aggregation mode.
     function addWeightBoostProvider(IWeightBoostProvider provider, WeightBoostProviderMode mode) external;
