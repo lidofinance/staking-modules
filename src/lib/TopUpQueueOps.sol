@@ -7,13 +7,17 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { ICSModule } from "../interfaces/ICSModule.sol";
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
+import { StakeTracker } from "./StakeTracker.sol";
 import { TopUpQueueLib, TopUpQueueItem } from "./TopUpQueueLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
+import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 
 /// @dev External deployment-linked library used by CSModule to reduce bytecode size.
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
+    using TransientUintUintMapLib for TransientUintUintMap;
 
     struct TopUpKeyParams {
         uint256[] keyIndices;
@@ -21,10 +25,18 @@ library TopUpQueueOps {
         uint256[] topUpLimits;
     }
 
+    struct AppliedTopUps {
+        uint256[] operatorIds;
+        uint256[] increments;
+        TransientUintUintMap operatorIndexes;
+        uint256 operatorsCount;
+    }
+
     // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
     uint256 internal constant TOP_UP_STEP = 2 ether;
 
     function allocateDeposits(
+        ModuleLinearStorage.BaseModuleStorage storage $,
         TopUpQueueLib.Queue storage topUpQueue,
         uint256 maxDepositAmount,
         bytes[] calldata pubkeys,
@@ -50,10 +62,18 @@ library TopUpQueueOps {
             topUpLimits: topUpLimits
         });
 
-        return _allocateDeposits(topUpQueue, maxDepositAmount, pubkeys, data);
+        return
+            _allocateDeposits({
+                $: $,
+                topUpQueue: topUpQueue,
+                maxDepositAmount: maxDepositAmount,
+                pubkeys: pubkeys,
+                data: data
+            });
     }
 
     function _allocateDeposits(
+        ModuleLinearStorage.BaseModuleStorage storage $,
         TopUpQueueLib.Queue storage topUpQueue,
         uint256 maxDepositAmount,
         bytes[] calldata pubkeys,
@@ -64,6 +84,12 @@ library TopUpQueueOps {
 
         uint256 keyCount = pubkeys.length;
         allocations = new uint256[](keyCount);
+        AppliedTopUps memory applied = AppliedTopUps({
+            operatorIds: new uint256[](keyCount),
+            increments: new uint256[](keyCount),
+            operatorIndexes: TransientUintUintMapLib.create(),
+            operatorsCount: 0
+        });
 
         for (uint256 i; i < keyCount; i++) {
             TopUpQueueItem item = topUpQueue.at(0);
@@ -78,12 +104,49 @@ library TopUpQueueOps {
             if (maxDepositAmount > 0 && limit > 0) {
                 allocations[i] = Math.min(limit, maxDepositAmount);
                 maxDepositAmount -= allocations[i];
+
+                _applyKeyAllocation({
+                    $: $,
+                    operatorId: data.operatorIds[i],
+                    keyIndex: data.keyIndices[i],
+                    allocation: allocations[i],
+                    applied: applied
+                });
             }
 
             if (allocations[i] == limit) {
                 topUpQueue.dequeue();
                 emit ICSModule.TopUpQueueItemProcessed(item.noId(), item.keyIndex());
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
+        }
+
+        for (uint256 i; i < applied.operatorsCount; ++i) {
+            StakeTracker.increaseOperatorBalance($, applied.operatorIds[i], applied.increments[i]);
+        }
+    }
+
+    function _applyKeyAllocation(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        uint256 operatorId,
+        uint256 keyIndex,
+        uint256 allocation,
+        AppliedTopUps memory applied
+    ) private {
+        uint256 increment = StakeTracker.applyKeyTopUp($.keyAllocatedBalance, operatorId, keyIndex, allocation);
+        if (increment == 0) return;
+
+        uint256 operatorIndex = applied.operatorIndexes.get(operatorId);
+        if (operatorIndex == 0) {
+            applied.operatorIds[applied.operatorsCount] = operatorId;
+            applied.increments[applied.operatorsCount] = increment;
+            unchecked {
+                ++applied.operatorsCount;
+            }
+            applied.operatorIndexes.set(operatorId, applied.operatorsCount);
+        } else {
+            unchecked {
+                applied.increments[operatorIndex - 1] += increment;
+            }
         }
     }
 

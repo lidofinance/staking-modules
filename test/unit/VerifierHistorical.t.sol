@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { Verifier } from "src/Verifier.sol";
@@ -73,7 +74,7 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -81,7 +82,7 @@ contract VerifierHistoricalBase is Test, Utilities {
             abi.encode(UintArr(0))
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -128,17 +129,15 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
@@ -291,7 +290,16 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        // The balance fixture contains 64 ETH; the report must carry the slot of the proven state.
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.reportValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether
+            )
+        );
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -309,7 +317,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -374,7 +382,16 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        // The balance fixture contains 64 ETH; the report must carry the slot of the proven state.
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.reportValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether
+            )
+        );
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -392,7 +409,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -457,7 +474,16 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        // The balance fixture contains 64 ETH; the report must carry the slot of the proven state.
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.reportValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether
+            )
+        );
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -544,7 +570,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture() internal {
@@ -594,17 +620,15 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
@@ -641,17 +665,15 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);

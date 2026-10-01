@@ -151,9 +151,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     function withdraw(uint256 noId, uint256 keyIndex, uint256 exitBalance) external broadcastVerifier {
         uint256 withdrawnBefore = module.getNodeOperator(noId).totalWithdrawnKeys;
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo(noId, keyIndex, exitBalance, 0);
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(WithdrawnValidatorInfo(noId, keyIndex, exitBalance));
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, withdrawnBefore + 1);

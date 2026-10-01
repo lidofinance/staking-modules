@@ -7,6 +7,8 @@ import { Test } from "forge-std/Test.sol";
 
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
@@ -86,6 +88,25 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
     function _moduleInvariants() internal virtual;
 
     function moduleType() internal pure virtual returns (ModuleType);
+
+    function _reportValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei,
+        uint64 balanceSlot
+    ) internal {
+        if (moduleType() == ModuleType.Curated) {
+            ICuratedModule(address(module)).syncValidatorBalance({
+                nodeOperatorId: nodeOperatorId,
+                keyIndex: keyIndex,
+                currentBalanceWei: currentBalanceWei,
+                balanceSlot: balanceSlot,
+                allowDecrease: false
+            });
+            return;
+        }
+        ICSModule(address(module)).reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
+    }
 
     function createNodeOperator() internal returns (uint256) {
         return createNodeOperator(nodeOperator, 1);
@@ -181,34 +202,12 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
     }
 
     function withdrawKey(uint256 noId, uint256 /* keyIndex */) internal {
-        WithdrawnValidatorInfo[] memory withdrawalsInfo = new WithdrawnValidatorInfo[](1);
-        withdrawalsInfo[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawalsInfo = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
-        module.reportRegularWithdrawnValidators(withdrawalsInfo);
-    }
-
-    /// @dev Sets keyConfirmedBalance via reportValidatorBalance.
-    function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
-        uint256 current = module.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
-        if (confirmedBalance == current) return;
-
-        assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
-
-        module.reportValidatorBalance({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            currentBalanceWei: confirmedBalance + ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-        });
-
-        assertEq(
-            module.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
-            confirmedBalance,
-            "key confirmed balance must match target"
-        );
+        module.reportRegularWithdrawnValidator(withdrawalsInfo);
     }
 
     function getNodeOperatorSummary(uint256 noId) public view returns (NodeOperatorSummary memory) {

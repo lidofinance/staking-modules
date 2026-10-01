@@ -13,11 +13,12 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
 import { CSModule } from "src/CSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
-import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 import { ITopUpQueueLib } from "src/lib/TopUpQueueLib.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
-import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
+import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
@@ -110,6 +111,21 @@ contract CSMCommon is ModuleFixtures {
         assertModuleEnqueuedCount(csm);
         assertModuleKeys(module);
         assertModuleSlashings(module);
+    }
+
+    function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
+        uint256 current = csm.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
+        if (confirmedBalance == current) return;
+
+        assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
+
+        csm.reportValidatorBalance(noId, keyIndex, confirmedBalance + ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+
+        assertEq(
+            csm.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
+            confirmedBalance,
+            "key confirmed balance must match target"
+        );
     }
 
     // Checks that the queue is in the expected state starting from its head.
@@ -965,14 +981,12 @@ contract CSMTopUpQueue is CSMCommon {
             topUpLimits: UintArr(2 ether)
         });
 
-        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
-        infos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether
         });
-        csm.reportRegularWithdrawnValidators(infos);
+        csm.reportRegularWithdrawnValidator(infos);
 
         csm.rewindTopUpQueue(0);
 
@@ -1190,15 +1204,13 @@ contract CSMTopUpQueue is CSMCommon {
         accounting.depositETH{ value: 100 ether }(0);
         uint256 bondBefore = accounting.getBond(0);
 
-        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
-        infos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: 40 ether,
-            slashingPenalty: 0
+            exitBalance: 40 ether
         });
 
-        csm.reportRegularWithdrawnValidators(infos);
+        csm.reportRegularWithdrawnValidator(infos);
         assertEq(accounting.getBond(0), bondBefore - 2 ether);
     }
 
@@ -1736,18 +1748,15 @@ contract CSMQueueOps is CSMCommon {
         module.obtainDepositData(2, "");
         csm.cleanDepositQueue(1);
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectEmit(address(module));
         emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(validatorInfos);
     }
 }
 
@@ -2114,7 +2123,7 @@ contract CSMSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelayedPen
 
 contract CSMCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CSMCommon {}
 
-contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {
+contract CSMReportWithdrawnValidator is ModuleReportWithdrawnValidator, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
@@ -2122,7 +2131,126 @@ contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCom
     }
 }
 
-contract CSMKeyAllocatedBalance is ModuleKeyAllocatedBalance, CSMCommon {
+contract CSMReportWithdrawnValidatorWithConfirmedBalance is CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+
+    function test_reportRegularWithdrawnValidator_exitBalanceBelowKeyBalance() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
+        uint256 exitBalance = maxReportedBalance - 1 ether;
+        uint256 expectedPenalty = maxReportedBalance - exitBalance;
+
+        csm.reportValidatorBalance(noId, keyIndex, maxReportedBalance);
+
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: exitBalance
+        });
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, expectedPenalty));
+        csm.reportRegularWithdrawnValidator(validatorInfos);
+
+        NodeOperator memory no = csm.getNodeOperator(noId);
+        assertEq(no.totalWithdrawnKeys, 1);
+        assertEq(csm.getTotalModuleStake(), 0);
+        assertEq(csm.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidator_exitPenaltyScaledByMaxReportedBalance() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint248 penalty = 1 ether;
+        uint256 multiplier = 3;
+
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(penalty, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 wei;
+        uint256 exitBalance = maxReportedBalance - 1 ether;
+        uint256 expectedPenalty = maxReportedBalance - exitBalance;
+
+        csm.reportValidatorBalance(noId, keyIndex, maxReportedBalance);
+
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: exitBalance
+        });
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier + expectedPenalty)
+        );
+        csm.reportRegularWithdrawnValidator(validatorInfos);
+
+        NodeOperator memory no = csm.getNodeOperator(noId);
+        assertEq(no.totalWithdrawnKeys, 1);
+        assertEq(csm.getTotalModuleStake(), 0);
+        assertEq(csm.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidator_chargesConfirmedBalanceShortage() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 balanceShortage = 10 ether;
+        setKeyConfirmedBalance(noId, 0, balanceShortage);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
+        });
+
+        csm.reportRegularWithdrawnValidator(validatorInfos);
+        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
+    }
+
+    function test_keyConfirmedBalance_PenalizeWhenSlashed() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 topUp = 10 ether;
+        setKeyConfirmedBalance(noId, 0, topUp);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        uint256 slashingPenalty = WithdrawnValidatorLib.scalePenalty(
+            parametersRegistry.slashingPenalty(),
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp
+        );
+
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertEq(
+            accounting.getBond(noId),
+            bondBefore - slashingPenalty,
+            "the confirmed balance scales the slashing penalty"
+        );
+    }
+}
+
+contract CSMGetKeyAllocatedBalances is ModuleGetKeyAllocatedBalances, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
@@ -2130,11 +2258,176 @@ contract CSMKeyAllocatedBalance is ModuleKeyAllocatedBalance, CSMCommon {
     }
 }
 
-contract CSMReportValidatorBalance is ModuleReportValidatorBalance, CSMCommon {
+contract CSMGetKeyConfirmedBalances is CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
         super.setUp();
+    }
+
+    function test_getKeyConfirmedBalances_zeroOnDeposit() public {
+        uint256 noId = createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 2), UintArr(0, 0));
+    }
+
+    function test_getKeyConfirmedBalances_afterReport() public {
+        uint256 noId = createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 3 ether);
+        csm.reportValidatorBalance(noId, 1, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 5 ether);
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 2), UintArr(3 ether, 5 ether));
+        assertEq(csm.getKeyConfirmedBalances(noId, 1, 1), UintArr(5 ether));
+        uint256 balanceWei = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * 2 + 8 ether;
+        assertEq(csm.getTotalModuleStake(), balanceWei);
+        assertEq(csm.getNodeOperatorBalance(noId), balanceWei);
+    }
+}
+
+contract CSMReportValidatorBalance is CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+
+    function test_reportValidatorBalance_happyPath() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 balanceWei = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
+
+        vm.expectEmit(address(csm));
+        emit IBaseModule.KeyConfirmedBalanceChanged(noId, 0, 10 ether);
+        csm.reportValidatorBalance(noId, 0, balanceWei);
+
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(csm.getTotalModuleStake(), balanceWei);
+        assertEq(csm.getNodeOperatorBalance(noId), balanceWei);
+    }
+
+    function test_reportValidatorBalance_emitsBalanceEventsInOrder() public {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 extraBalance = 10 ether;
+        uint256 balanceWei = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + extraBalance;
+
+        vm.expectEmit(address(csm));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, extraBalance);
+        vm.expectEmit(address(csm));
+        emit IBaseModule.KeyConfirmedBalanceChanged(noId, 0, extraBalance);
+        vm.expectEmit(address(csm));
+        emit IBaseModule.NodeOperatorBalanceUpdated(noId, balanceWei);
+
+        csm.reportValidatorBalance(noId, 0, balanceWei);
+    }
+
+    function test_reportValidatorBalance_increasesWhenHigher() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 firstBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 5 ether;
+        uint256 secondBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
+
+        csm.reportValidatorBalance(noId, 0, firstBalance);
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 1), UintArr(5 ether));
+
+        vm.expectEmit(address(csm));
+        emit IBaseModule.KeyConfirmedBalanceChanged(noId, 0, 10 ether);
+        csm.reportValidatorBalance(noId, 0, secondBalance);
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(csm.getTotalModuleStake(), secondBalance);
+        assertEq(csm.getNodeOperatorBalance(noId), secondBalance);
+    }
+
+    function test_reportValidatorBalance_doesNotDecrease() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        uint256 balanceWei = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
+        csm.reportValidatorBalance(noId, 0, balanceWei);
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 1), UintArr(10 ether));
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 5 ether);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        csm.reportValidatorBalance(noId, 0, balanceWei);
+
+        assertEq(csm.getTotalModuleStake(), balanceWei);
+        assertEq(csm.getNodeOperatorBalance(noId), balanceWei);
+    }
+
+    function test_reportValidatorBalance_capsAtMax() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE + 100 ether);
+        assertEq(csm.getKeyConfirmedBalances(noId, 0, 1), UintArr(ValidatorBalanceLimits.MAX_EXTRA_BALANCE));
+        assertEq(csm.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+        assertEq(csm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+    }
+
+    function test_reportValidatorBalance_updatesKeyAllocatedBalance() public {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        vm.expectEmit(address(csm));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, 10 ether);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(csm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(csm.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(csm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_ConfirmedBalanceIsZero() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_reportValidatorBalance_revertWhen_BelowMinActivation() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - 1 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_ValidatorWithdrawn() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+        withdrawKey(noId, 0);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_NoRole() public {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        expectRoleRevert(stranger, csm.VERIFIER_ROLE());
+        vm.prank(stranger);
+        csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 1 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_InvalidKeyIndex() public {
+        uint256 noId = createNodeOperator();
+        csm.obtainDepositData(1, "");
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        csm.reportValidatorBalance(noId, 1, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 1 ether);
+    }
+
+    function test_reportValidatorBalance_revertWhen_NoNodeOperator() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        csm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 
     function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
@@ -2205,14 +2498,12 @@ contract CSMTotalModuleStake is CSMCommon {
         csm.obtainDepositData(1, "");
         assertEq(module.getTotalModuleStake(), 32 ether);
 
-        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
-        infos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
-        csm.reportRegularWithdrawnValidators(infos);
+        csm.reportRegularWithdrawnValidator(infos);
 
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperatorBalance(noId), 0);
@@ -2277,14 +2568,12 @@ contract CSMTotalModuleStake is CSMCommon {
         assertGt(module.getTotalModuleStake(), 32 ether);
         assertGt(module.getNodeOperatorBalance(noId), 32 ether);
 
-        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
-        infos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
-        csm.reportRegularWithdrawnValidators(infos);
+        csm.reportRegularWithdrawnValidator(infos);
 
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperatorBalance(noId), 0);
@@ -2342,7 +2631,39 @@ contract CSMStakingRouterAccessControl is ModuleStakingRouterAccessControl, CSMC
     }
 }
 
-contract CSMDepositableValidatorsCount is ModuleDepositableValidatorsCount, CSMCommon {}
+contract CSMDepositableValidatorsCount is ModuleDepositableValidatorsCount, CSMCommon {
+    function test_depositableValidatorsCountChanges_OnPenalizedWithdrawal() public assertInvariants {
+        uint256 noId = createNodeOperator(7);
+        module.obtainDepositData(4, "");
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+
+        penalize(noId, BOND_SIZE * 3);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
+        });
+        infos[1] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 1,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
+        });
+        infos[2] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 2,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE
+        });
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        for (uint256 i; i < infos.length; ++i) {
+            module.reportRegularWithdrawnValidator(infos[i]);
+        }
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
+    }
+}
 
 contract CSMNodeOperatorStateAfterUpdateCurve is ModuleNodeOperatorStateAfterUpdateCurve, CSMCommon {}
 
