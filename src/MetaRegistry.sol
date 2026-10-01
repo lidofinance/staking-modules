@@ -62,6 +62,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     // can't be used as a real group ID.
     uint256 public constant NO_GROUP_ID = 0;
 
+    uint256 public constant MAX_WEIGHT_BOOST_PROVIDERS = 10;
+
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IStakingRouter public immutable STAKING_ROUTER;
@@ -162,6 +164,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if ($.weightBoostProviderIdByAddress[providerAddr] != 0) {
             revert WeightBoostProviderAlreadyAdded();
         }
+        if ($.weightBoostProviders.length >= MAX_WEIGHT_BOOST_PROVIDERS) revert TooManyWeightBoostProviders();
 
         $.weightBoostProviders.push(WeightBoostProviderEntry({ provider: provider, mode: mode, enabled: true }));
         $.weightBoostProviderIdByAddress[providerAddr] = $.weightBoostProviders.length;
@@ -550,10 +553,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             WeightBoostProviderEntry storage entry = providers[i];
             if (!entry.enabled || entry.mode != WeightBoostProviderMode.MaxPerGroup) continue;
 
-            uint256 multiplierBP = _getProviderMaxPerGroupWeightBoostMultiplierBP(entry.provider, group);
-            if (multiplierBP == MAX_BP) continue;
-
-            numerator *= multiplierBP;
+            numerator *= _getProviderMaxPerGroupWeightBoostMultiplierBP(entry.provider, group);
             denominator *= MAX_BP;
         }
     }
@@ -569,10 +569,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             WeightBoostProviderEntry storage entry = providers[i];
             if (!entry.enabled || entry.mode != WeightBoostProviderMode.PerNodeOperator) continue;
 
-            uint256 multiplierBP = entry.provider.getWeightBoostMultiplierBP(nodeOperatorId);
-            if (multiplierBP == MAX_BP) continue;
-
-            numerator *= multiplierBP;
+            numerator *= entry.provider.getWeightBoostMultiplierBP(nodeOperatorId);
             denominator *= MAX_BP;
         }
     }

@@ -1189,6 +1189,25 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
         vm.stopPrank();
     }
 
+    function test_addWeightBoostProvider_RevertWhen_MaxProvidersReached_DisabledProviderKeepsSlot() public {
+        uint256 max = registry.MAX_WEIGHT_BOOST_PROVIDERS();
+        vm.startPrank(admin);
+        for (uint256 i; i < max; ++i) {
+            registry.addWeightBoostProvider(new WeightBoostProviderMock(), PER_NODE_OPERATOR_MODE);
+        }
+        assertEq(registry.getWeightBoostProvidersCount(), max);
+
+        IWeightBoostProvider extra = new WeightBoostProviderMock();
+        vm.expectRevert(IMetaRegistry.TooManyWeightBoostProviders.selector);
+        registry.addWeightBoostProvider(extra, PER_NODE_OPERATOR_MODE);
+
+        registry.setWeightBoostProviderEnabled(1, false);
+
+        vm.expectRevert(IMetaRegistry.TooManyWeightBoostProviders.selector);
+        registry.addWeightBoostProvider(extra, PER_NODE_OPERATOR_MODE);
+        vm.stopPrank();
+    }
+
     function test_addWeightBoostProvider_RevertWhen_NoRole() public {
         expectRoleRevert(stranger, registry.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
@@ -1668,28 +1687,6 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
 
         for (uint256 i; i < 3; ++i) registry.refreshGroupWeights(firstGroupId + i);
         for (uint256 i; i < 3; ++i) assertEq(registry.getNodeOperatorWeight(i), 23167);
-    }
-
-    function test_refreshWeights_ManyIdentityProvidersDoNotOverflow() public {
-        _setBondCurveWeight(0, CURVE_WEIGHT);
-
-        vm.startPrank(admin);
-        for (uint256 i; i < 20; ++i) {
-            registry.addWeightBoostProvider(new WeightBoostProviderMock(), PER_NODE_OPERATOR_MODE);
-        }
-        vm.stopPrank();
-
-        uint256 groupId = _nextGroupId();
-        vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
-
-        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
-
-        registry.refreshOperatorWeight(0);
-        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
-
-        registry.refreshGroupWeights(groupId);
-        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
     }
 
     function test_refreshOperatorWeight_AllowsProviderMultiplierBelowBaseline() public {
