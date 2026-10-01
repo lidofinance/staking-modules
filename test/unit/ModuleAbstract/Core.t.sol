@@ -194,10 +194,6 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
-    function reportValidatorBalance(uint256, uint256, uint256, uint64) public pure override {
-        revert NotImplementedInTest();
-    }
-
     function _getWithdrawalPenaltyBasis(
         WithdrawnValidatorInfo memory
     ) internal pure override returns (WithdrawnValidatorLib.PenaltyBasis memory) {
@@ -376,8 +372,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         vm.prank(actor);
@@ -391,8 +386,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         vm.prank(stranger);

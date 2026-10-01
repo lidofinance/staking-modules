@@ -46,11 +46,8 @@ struct WithdrawnValidatorInfo {
     uint256 keyIndex;
     // Balance to be used to calculate penalties. For a regular withdrawal of a validator it's the withdrawal amount.
     // For a slashed validator it's its balance before slashing.
-    // The balance will be used to scale incurred penalties and calculate penalties due to offline validators via the shortcut mechanism.
+    // Modules choose how to use this balance to scale penalties and account for a balance shortage.
     uint256 exitBalance;
-    // Penalty for a single 32 ETH validator to charge due to slashing, scaled by the balance above.
-    // Zero for a regular withdrawal, which is penalized by the balance shortage instead.
-    uint256 slashingPenalty;
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
@@ -430,36 +427,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param timeToWithdrawable Time left until the slashed key becomes withdrawable on the Consensus Layer
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external;
 
-    /// @notice Update verified on-chain balance for a key.
-    /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param currentBalanceWei Proven current validator balance in wei
-    /// @param balanceSlot Slot of the beacon state containing the proven balance
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei,
-        uint64 balanceSlot
-    ) external;
-
     /// @notice Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
     /// @param startIndex Index of the first key
     /// @param keysCount Count of keys to get
     /// @return balances Allocated balances above MIN_ACTIVATION_BALANCE (wei)
     function getKeyAllocatedBalances(
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external view returns (uint256[] memory balances);
-
-    /// @notice Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param startIndex Index of the first key
-    /// @param keysCount Count of keys to get
-    /// @return balances Confirmed balances above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyConfirmedBalances(
         uint256 nodeOperatorId,
         uint256 startIndex,
         uint256 keysCount

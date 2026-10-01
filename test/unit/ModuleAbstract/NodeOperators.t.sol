@@ -189,8 +189,7 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         module.reportRegularWithdrawnValidator(validatorInfos);

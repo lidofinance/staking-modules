@@ -77,8 +77,8 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
             topUpLimits: UintArr(topUp)
         });
         assertEq(module.getKeyAllocatedBalances(noId, 0, 1), UintArr(topUp));
-        assertEq(module.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
 
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 3 ether);
         exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
@@ -86,7 +86,8 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
                 legacyElWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
-        uint256 slashingPenalty = 1.3125 ether;
+        // Both penalties use the whole-ETH multiplier of 42; the ready slashing penalty is not scaled again.
+        uint256 slashingPenalty = 3.9375 ether;
         uint256 totalPenalty = slashingPenalty + 0.013125 ether;
         uint256 nonce = module.getNonce();
 
@@ -99,6 +100,42 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
         assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_reportValidatorSlashing_capsPenaltyMultiplier() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        _reportValidatorBalance(noId, 0, 3000 ether, 1);
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 3 ether);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.01 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        // Scaling is capped at x64 for both the configured slashing penalty and strikes.
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 192.64 ether), 1);
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportValidatorSlashing_roundsBalanceDownToWholeEth() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        _reportValidatorBalance(noId, 0, 42.9 ether, 1);
+
+        // The configured 1 ETH base penalty scales by 42 / 32, not 42.9 / 32.
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 1.3125 ether), 1);
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_isValidatorSlashed_DefaultFalse() public assertInvariants {
@@ -179,8 +216,7 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectRevert(IBaseModule.ValidatorAlreadyWithdrawn.selector);
@@ -198,8 +234,7 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector);
@@ -237,8 +272,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectEmit(address(module));
@@ -270,8 +304,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage
         });
 
         vm.expectEmit(address(module));
@@ -299,8 +332,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage
         });
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
@@ -335,8 +367,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         module.reportRegularWithdrawnValidator(validatorInfos);
@@ -364,8 +395,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         module.reportRegularWithdrawnValidator(validatorInfos);
@@ -384,8 +414,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage
         });
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
@@ -414,8 +443,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectCall(
@@ -449,8 +477,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.expectCall(
@@ -484,8 +511,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei
         });
 
         vm.expectCall(
@@ -516,30 +542,13 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether
         });
 
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier)
         );
-        module.reportRegularWithdrawnValidator(validatorInfos);
-    }
-
-    function test_reportRegularWithdrawnValidator_revertWhen_SlashingPenaltyPresent() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 154
-        });
-
-        vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector, address(module));
         module.reportRegularWithdrawnValidator(validatorInfos);
     }
 
@@ -560,8 +569,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
@@ -583,8 +591,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         module.reportRegularWithdrawnValidator(validatorInfos);
@@ -599,8 +606,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         vm.expectRevert(IBaseModule.ZeroExitBalance.selector);
@@ -611,8 +617,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: 32 ether,
-            slashingPenalty: 0
+            exitBalance: 32 ether
         });
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
@@ -625,8 +630,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 32 ether,
-            slashingPenalty: 0
+            exitBalance: 32 ether
         });
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
@@ -640,8 +644,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         module.reportRegularWithdrawnValidator(validatorInfos);
@@ -660,8 +663,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
             validatorInfos[i] = WithdrawnValidatorInfo({
                 nodeOperatorId: noId,
                 keyIndex: i,
-                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-                slashingPenalty: 0
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
             });
         }
         for (uint256 i; i < validatorInfos.length; ++i) {
@@ -677,8 +679,7 @@ abstract contract ModuleReportWithdrawnValidator is ModuleReportValidatorSlashin
         WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         vm.startSnapshotGas("reportRegularWithdrawnValidator_1");

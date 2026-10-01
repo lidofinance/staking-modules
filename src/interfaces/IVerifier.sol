@@ -157,6 +157,11 @@ interface IVerifier {
     /// @param data The balance proof input containing recent block header, validator witness, and balance witness.
     function processBalanceProof(ProcessBalanceProofInput calldata data) external;
 
+    /// @notice Verify a recent validator balance proof and apply a slot-ordered checkpoint to Curated.
+    /// @dev Temporary Curated entry point; calls syncValidatorBalance with allowDecrease=false.
+    /// @param data The recent block header, validator witness, and balance witness.
+    function processBalanceProofForCurated(ProcessBalanceProofInput calldata data) external;
+
     /// @notice Verify a validator's balance proof from a historical beacon block and sync the key added balance.
     ///         A historical proof is needed because the validator's balance may have increased at some point in the past
     ///         and later decreased (e.g. due to inactivity leak or penalties). A recent proof alone would miss that peak,

@@ -370,8 +370,7 @@ abstract contract BaseModule is
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
             // The tracked key balance stands for the pre-slashing one to scale the penalty by.
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer],
-            slashingPenalty: PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(nodeOperatorId))
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer]
         });
         _reportWithdrawnValidator(info, true);
     }
@@ -604,16 +603,6 @@ abstract contract BaseModule is
         return NodeOperatorOps.getKeyAllocatedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
     }
 
-    /// @inheritdoc IBaseModule
-    function getKeyConfirmedBalances(
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external view returns (uint256[] memory balances) {
-        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
-        return NodeOperatorOps.getKeyConfirmedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
-    }
-
     /// @inheritdoc IStakingModuleV2
     function getTotalModuleStake() public view override returns (uint256) {
         return StakeTracker.getTotalModuleStake(_baseStorage());
@@ -641,8 +630,17 @@ abstract contract BaseModule is
     }
 
     function _reportWithdrawnValidator(WithdrawnValidatorInfo memory info, bool slashed) internal {
+        WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis = _getWithdrawalPenaltyBasis(info);
+        if (slashed) {
+            // The slashing penalty accounts for all the losses, so the balance shortage is not charged on top of it.
+            penaltyBasis.penaltyAmount = WithdrawnValidatorLib._scalePenaltyByMultiplier(
+                PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(info.nodeOperatorId)),
+                penaltyBasis.penaltyMultiplier
+            );
+        }
+
         uint256 trackedBalanceDecrease = WithdrawnValidatorLib.processValidator({
-            penaltyBasis: _getWithdrawalPenaltyBasis(info),
+            penaltyBasis: penaltyBasis,
             info: info,
             slashed: slashed,
             $: _baseStorage()
@@ -657,6 +655,8 @@ abstract contract BaseModule is
         _incrementModuleNonce();
     }
 
+    /// @dev Returns the module-specific multiplier and regular withdrawal penalty.
+    ///      The automatic slashing flow replaces the penalty amount with the scaled slashing penalty.
     function _getWithdrawalPenaltyBasis(
         WithdrawnValidatorInfo memory info
     ) internal view virtual returns (WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis);

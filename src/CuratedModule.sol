@@ -8,7 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
+import { NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -152,7 +152,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei,
-        uint64 balanceSlot
+        uint64 balanceSlot,
+        bool allowDecrease
     ) external {
         _checkVerifierRole();
         CheckpointBalanceTracker.updateValidatorBalance({
@@ -162,7 +163,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             keyIndex: keyIndex,
             currentBalanceWei: currentBalanceWei,
             balanceSlot: balanceSlot,
-            allowDecrease: true
+            allowDecrease: allowDecrease
         });
     }
 
@@ -242,25 +243,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         });
     }
 
-    /// @inheritdoc IBaseModule
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei,
-        uint64 balanceSlot
-    ) external {
-        _checkVerifierRole();
-        CheckpointBalanceTracker.updateValidatorBalance({
-            $: _baseStorage(),
-            lastBalanceCheckpointSlot: _curatedStorage().lastBalanceCheckpointSlot,
-            nodeOperatorId: nodeOperatorId,
-            keyIndex: keyIndex,
-            currentBalanceWei: currentBalanceWei,
-            balanceSlot: balanceSlot,
-            allowDecrease: false
-        });
-    }
-
     function _updateDepositInfo(uint256 nodeOperatorId) internal override {
         _metaRegistry().refreshOperatorWeight(nodeOperatorId);
         super._updateDepositInfo(nodeOperatorId);
@@ -277,7 +259,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         penaltyBasis.penaltyMultiplier = WithdrawnValidatorLib._getPenaltyMultiplier(
             Math.min(balance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
         );
-        // Automatic balance loss remains zero; Curated shortages require manual penalties.
+        // Regular withdrawal shortages require manual penalties.
     }
 
     function _applyDepositableValidatorsCount(

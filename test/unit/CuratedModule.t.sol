@@ -603,8 +603,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: firstId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
         module.reportRegularWithdrawnValidator(validatorInfos);
 
@@ -1832,7 +1831,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
     function test_reportValidatorSlashing_scalesBothPenaltiesByAllocatedBalance() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.reportValidatorBalance(noId, 0, 64 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 64 ether, 10, false);
         curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 2016 ether);
         parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 4 ether);
 
@@ -1858,9 +1857,9 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
     function test_reportValidatorSlashing_checkpointReducesPenalty() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
-        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
-        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
-        cm.syncValidatorBalance(noId, 1, 32 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 2048 ether, 10, false);
+        cm.syncValidatorBalance(noId, 1, 2048 ether, 10, false);
+        cm.syncValidatorBalance(noId, 1, 32 ether, 11, true);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1890,8 +1889,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         vm.expectEmit(address(module));
@@ -1924,8 +1922,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         module.reportRegularWithdrawnValidator(infos);
@@ -1940,8 +1937,8 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         // A top-up is already part of the penalty basis before any consensus-layer balance proof arrives.
         cm.allocateDeposits(32.9 ether, BytesArr(key), UintArr(0), UintArr(noId), UintArr(32.9 ether));
-        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
-        module.reportValidatorBalance(noId, 2, 3000 ether, 10);
+        cm.syncValidatorBalance(noId, 1, 2048 ether, 10, false);
+        cm.syncValidatorBalance(noId, 2, 3000 ether, 10, false);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1956,12 +1953,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
 
         WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
         for (uint256 i; i < infos.length; ++i) {
-            infos[i] = WithdrawnValidatorInfo({
-                nodeOperatorId: noId,
-                keyIndex: i,
-                exitBalance: 0,
-                slashingPenalty: 0
-            });
+            infos[i] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: i, exitBalance: 0 });
         }
 
         for (uint256 i; i < infos.length; ++i) {
@@ -1975,9 +1967,9 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
     function test_reportRegularWithdrawnValidator_checkpointReducesStrikesPenalty() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
-        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
-        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
-        cm.syncValidatorBalance(noId, 1, 32 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 2048 ether, 10, false);
+        cm.syncValidatorBalance(noId, 1, 2048 ether, 10, false);
+        cm.syncValidatorBalance(noId, 1, 32 ether, 11, true);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1993,8 +1985,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
         module.reportRegularWithdrawnValidator(infos);
         assertEq(accounting.getBond(noId), bondBefore - 6.4 ether);
@@ -2016,8 +2007,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         module.reportRegularWithdrawnValidator(infos);
@@ -2032,8 +2022,8 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         uint256 nonce = module.getNonce();
 
         WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](2);
-        infos[0] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 0, exitBalance: 0, slashingPenalty: 0 });
-        infos[1] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 1, exitBalance: 0, slashingPenalty: 0 });
+        infos[0] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 0, exitBalance: 0 });
+        infos[1] = WithdrawnValidatorInfo({ nodeOperatorId: noId, keyIndex: 1, exitBalance: 0 });
 
         module.reportRegularWithdrawnValidator(infos[0]);
         module.reportRegularWithdrawnValidator(infos[1]);
@@ -2050,8 +2040,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
         module.reportRegularWithdrawnValidator(info);
 
@@ -2063,8 +2052,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
@@ -2077,26 +2065,10 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.reportRegularWithdrawnValidator(infos);
-    }
-
-    function test_reportRegularWithdrawnValidator_revertWhen_SlashingPenaltyPresent() public {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo memory infos = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 1 ether
-        });
-
-        vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector);
         module.reportRegularWithdrawnValidator(infos);
     }
 
@@ -2108,8 +2080,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
         WithdrawnValidatorInfo memory info = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 0,
-            slashingPenalty: 0
+            exitBalance: 0
         });
 
         vm.expectRevert(IBaseModule.ValidatorAlreadyWithdrawn.selector);
@@ -2119,7 +2090,7 @@ contract CuratedReportWithdrawnValidator is ModuleReportValidatorSlashing, Curat
 
 contract CuratedGetKeyAllocatedBalances is ModuleGetKeyAllocatedBalances, CuratedCommon {}
 
-contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
+contract CuratedSyncValidatorBalance is CuratedCommon {
     function test_exposedSetKeyAllocatedBalance_revertWhen_AboveCap() public {
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
 
@@ -2127,10 +2098,10 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         curatedHarness.exposedSetKeyAllocatedBalance(0, 0, cap + 1);
     }
 
-    function test_reportValidatorBalance_updatesLastBalanceCheckpointSlotInCuratedStorage() public {
+    function test_syncValidatorBalance_updatesLastBalanceCheckpointSlotInCuratedStorage() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         uint256 pointer = KeyPointerLib.keyPointer(noId, 0);
         bytes32 curatedStorageLocation = 0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
@@ -2139,7 +2110,7 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         assertEq(vm.load(address(cm), keccak256(abi.encode(pointer, uint256(14)))), bytes32(0));
     }
 
-    function test_reportValidatorBalance_updatesTrackedBalance() public assertInvariants {
+    function test_syncValidatorBalance_updatesTrackedBalance() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
         uint256 nonceBefore = cm.getNonce();
@@ -2151,42 +2122,41 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         vm.expectEmit(address(cm));
         emit ICuratedModule.ValidatorBalanceSynced(noId, 0, 10, 10 ether);
 
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
-        assertEq(cm.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
         assertEq(cm.getNodeOperatorBalance(noId), 42 ether);
         assertEq(cm.getTotalModuleStake(), 42 ether);
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
         assertEq(cm.getNonce(), nonceBefore);
     }
 
-    function test_reportValidatorBalance_revertWhen_BalanceUnchanged() public {
+    function test_syncValidatorBalance_revertWhen_BalanceUnchanged_DecreaseDisallowed() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         vm.expectRevert(IBaseModule.UnreportableBalance.selector);
-        cm.reportValidatorBalance(noId, 0, 42 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 11, false);
     }
 
-    function test_syncValidatorBalance_revertWhen_BalanceUnchanged() public {
+    function test_syncValidatorBalance_revertWhen_BalanceUnchanged_DecreaseAllowed() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         vm.expectRevert(IBaseModule.UnreportableBalance.selector);
-        cm.syncValidatorBalance(noId, 0, 42 ether, 12);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 12, true);
 
-        cm.syncValidatorBalance(noId, 0, 41 ether, 12);
+        cm.syncValidatorBalance(noId, 0, 41 ether, 12, true);
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 12);
     }
 
-    function test_reportValidatorBalance_capsBalance() public assertInvariants {
+    function test_syncValidatorBalance_capsBalance() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
 
-        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE + 100 ether, 10);
+        cm.syncValidatorBalance(noId, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE + 100 ether, 10, false);
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(cap));
@@ -2194,19 +2164,19 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         assertEq(cm.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
     }
 
-    function test_reportValidatorBalance_revertWhen_DecreasingBalance() public {
+    function test_syncValidatorBalance_revertWhen_DecreasingBalance() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         vm.expectRevert(ICuratedModule.BalanceDecreaseNotAllowed.selector);
-        cm.reportValidatorBalance(noId, 0, 41 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 41 ether, 11, false);
     }
 
     function test_syncValidatorBalance_decreasesTrackedBalance() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 52 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 52 ether, 10, false);
         uint256 nonceBefore = cm.getNonce();
 
         vm.expectEmit(address(cm));
@@ -2216,7 +2186,7 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         vm.expectEmit(address(cm));
         emit ICuratedModule.ValidatorBalanceSynced(noId, 0, 11, 10 ether);
 
-        cm.syncValidatorBalance(noId, 0, 42 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 11, true);
 
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
         assertEq(cm.getNodeOperatorBalance(noId), 42 ether);
@@ -2228,9 +2198,9 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
     function test_syncValidatorBalance_normalizesBelowBaseToZero() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
-        cm.syncValidatorBalance(noId, 0, 1 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 1 ether, 11, true);
 
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(0));
         assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
@@ -2252,9 +2222,9 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 0);
 
         vm.expectRevert(ICuratedModule.BalanceDecreaseNotAllowed.selector);
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
-        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, true);
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
     }
@@ -2262,7 +2232,7 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
     function test_allocateDeposits_doesNotAdvanceBalanceCheckpointSlot() public assertInvariants {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         bytes memory key = cm.getSigningKeys(noId, 0, 1);
         cm.allocateDeposits({
@@ -2276,7 +2246,7 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 10);
         assertGt(cm.getKeyAllocatedBalances(noId, 0, 1)[0], 10 ether);
 
-        cm.syncValidatorBalance(noId, 0, 42 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 11, true);
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
         assertEq(curatedHarness.exposedLastBalanceCheckpointSlot(noId, 0), 11);
     }
@@ -2285,39 +2255,39 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
 
-        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
-        cm.syncValidatorBalance(noId, 0, 52 ether, 11);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, true);
+        cm.syncValidatorBalance(noId, 0, 52 ether, 11, true);
 
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether));
         assertEq(cm.getNodeOperatorBalance(noId), 52 ether);
         assertEq(cm.getTotalModuleStake(), 52 ether);
     }
 
-    function test_reportValidatorBalance_revertWhen_SameSlot() public {
+    function test_syncValidatorBalance_revertWhen_SameSlot() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         vm.expectRevert(ICuratedModule.StaleBalanceUpdate.selector);
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
     }
 
     function test_syncValidatorBalance_revertWhen_StaleSlot() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
 
         vm.expectRevert(ICuratedModule.StaleBalanceUpdate.selector);
-        cm.syncValidatorBalance(noId, 0, 41 ether, 9);
+        cm.syncValidatorBalance(noId, 0, 41 ether, 9, true);
     }
 
-    function test_reportValidatorBalance_revertWhen_ValidatorWithdrawn() public {
+    function test_syncValidatorBalance_revertWhen_ValidatorWithdrawn() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
         withdrawKey(noId, 0);
 
         vm.expectRevert(IBaseModule.UnreportableBalance.selector);
-        cm.reportValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, false);
     }
 
     function test_syncValidatorBalance_revertWhen_ValidatorSlashed() public {
@@ -2326,32 +2296,32 @@ contract CuratedReportAndSyncValidatorBalance is CuratedCommon {
         cm.reportValidatorSlashing(noId, 0, 0);
 
         vm.expectRevert(IBaseModule.UnreportableBalance.selector);
-        cm.syncValidatorBalance(noId, 0, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 0, 42 ether, 10, true);
     }
 
-    function test_reportValidatorBalance_revertWhen_InvalidKeyIndex() public {
+    function test_syncValidatorBalance_revertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        cm.reportValidatorBalance(noId, 1, 42 ether, 10);
+        cm.syncValidatorBalance(noId, 1, 42 ether, 10, false);
     }
 
-    function test_reportValidatorBalance_revertWhen_NoNodeOperator() public {
+    function test_syncValidatorBalance_revertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        cm.reportValidatorBalance(0, 0, 42 ether, 10);
+        cm.syncValidatorBalance(0, 0, 42 ether, 10, false);
     }
 
-    function test_reportValidatorBalance_revertWhen_NoRole() public {
+    function test_syncValidatorBalance_revertWhen_NoRole_DecreaseDisallowed() public {
         expectRoleRevert(stranger, cm.VERIFIER_ROLE());
         vm.prank(stranger);
-        cm.reportValidatorBalance(0, 0, 42 ether, 10);
+        cm.syncValidatorBalance(0, 0, 42 ether, 10, false);
     }
 
-    function test_syncValidatorBalance_revertWhen_NoRole() public {
+    function test_syncValidatorBalance_revertWhen_NoRole_DecreaseAllowed() public {
         expectRoleRevert(stranger, cm.VERIFIER_ROLE());
         vm.prank(stranger);
-        cm.syncValidatorBalance(0, 0, 42 ether, 10);
+        cm.syncValidatorBalance(0, 0, 42 ether, 10, true);
     }
 }
 
@@ -2379,7 +2349,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         createNodeOperator(1);
         cm.obtainDepositData(1, "");
 
-        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1);
+        cm.syncValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1, false);
 
         bytes memory key = cm.getSigningKeys(0, 0, 1);
         bytes[] memory pubkeys = BytesArr(key);
@@ -2406,8 +2376,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
         cm.reportRegularWithdrawnValidator(validatorInfos);
 
@@ -2486,7 +2455,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 10 ether, 1);
+        cm.syncValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 10 ether, 1, false);
 
         bytes memory key = cm.getSigningKeys(0, 0, 1);
         uint256[] memory allocations = cm.allocateDeposits({
@@ -2508,7 +2477,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 2 ether, 1);
+        cm.syncValidatorBalance(0, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + cap - 2 ether, 1, false);
 
         vm.expectEmit(address(cm));
         emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, cap);
@@ -2526,7 +2495,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        cm.reportValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1);
+        cm.syncValidatorBalance(0, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, 1, false);
 
         vm.recordLogs();
         // Current allocators cap per-key top-ups before they reach StakeTracker, so an over-cap allocation is
@@ -2587,7 +2556,7 @@ contract CuratedTotalModuleStake is CuratedCommon {
         });
 
         uint256 verifiedExtra = allocations[0] + 2 ether;
-        cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra, 1);
+        cm.syncValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra, 1, false);
 
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra);
         assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + verifiedExtra);
@@ -2612,8 +2581,7 @@ contract CuratedTotalModuleStake is CuratedCommon {
         WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
         cm.reportRegularWithdrawnValidator(validatorInfos);
 
@@ -2641,8 +2609,7 @@ contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, 
             infos[i] = WithdrawnValidatorInfo({
                 nodeOperatorId: noId,
                 keyIndex: i,
-                exitBalance: i == 2 ? ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE : 0,
-                slashingPenalty: 0
+                exitBalance: i == 2 ? ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE : 0
             });
         }
 

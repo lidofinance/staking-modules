@@ -149,13 +149,12 @@ contract CSModule is ICSModule, BaseModule {
         _incrementModuleNonce();
     }
 
-    /// @inheritdoc IBaseModule
+    /// @inheritdoc ICSModule
     function reportValidatorBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex,
-        uint256 currentBalanceWei,
-        uint64 /* balanceSlot */
-    ) public override(IBaseModule) {
+        uint256 currentBalanceWei
+    ) public override(ICSModule) {
         _onlyEnabledTopUpQueue();
         _checkVerifierRole();
 
@@ -266,6 +265,16 @@ contract CSModule is ICSModule, BaseModule {
         }
     }
 
+    /// @inheritdoc ICSModule
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
+        return NodeOperatorOps.getKeyConfirmedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
+    }
+
     function _applyDepositableValidatorsCount(
         NodeOperator storage no,
         uint256 nodeOperatorId,
@@ -302,7 +311,7 @@ contract CSModule is ICSModule, BaseModule {
 
         uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
         uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + _baseStorage().keyConfirmedBalance[pointer];
-        if (info.exitBalance < balance) penaltyBasis.balanceLoss = balance - info.exitBalance;
+        if (info.exitBalance < balance) penaltyBasis.penaltyAmount = balance - info.exitBalance;
 
         penaltyBasis.penaltyMultiplier = WithdrawnValidatorLib._getPenaltyMultiplier(
             Math.min(Math.max(info.exitBalance, balance), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)

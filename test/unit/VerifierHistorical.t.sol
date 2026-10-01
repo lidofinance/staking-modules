@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { Verifier } from "src/Verifier.sol";
@@ -73,7 +74,7 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -131,8 +132,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
@@ -294,11 +294,10 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportValidatorBalance.selector,
+                ICSModule.reportValidatorBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
-                64 ether,
-                fixture.data.historicalBlock.header.slot.unwrap()
+                64 ether
             )
         );
 
@@ -318,7 +317,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -387,11 +386,10 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportValidatorBalance.selector,
+                ICSModule.reportValidatorBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
-                64 ether,
-                fixture.data.historicalBlock.header.slot.unwrap()
+                64 ether
             )
         );
 
@@ -411,7 +409,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -480,11 +478,10 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportValidatorBalance.selector,
+                ICSModule.reportValidatorBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
-                64 ether,
-                fixture.data.historicalBlock.header.slot.unwrap()
+                64 ether
             )
         );
 
@@ -573,7 +570,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(ICSModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture() internal {
@@ -626,8 +623,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
         WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
@@ -672,8 +668,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
         WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(

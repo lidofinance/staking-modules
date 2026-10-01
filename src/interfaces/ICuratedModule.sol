@@ -25,16 +25,18 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     function initialize(address admin) external;
 
     /// @notice Synchronizes a key's allocated balance to a verified consensus-layer balance.
-    /// @dev Allows the allocated balance to increase or decrease.
+    /// @dev Requires a newer balance slot and a changed normalized balance.
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param keyIndex Index of the key in the Node Operator's keys storage.
     /// @param currentBalanceWei Verified consensus-layer validator balance in wei.
     /// @param balanceSlot Slot of the beacon state containing the verified balance.
+    /// @param allowDecrease Whether the proof permits decreasing the allocated balance.
     function syncValidatorBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei,
-        uint64 balanceSlot
+        uint64 balanceSlot,
+        bool allowDecrease
     ) external;
 
     /// @notice Notifies the module about the weight change of a node operator.
