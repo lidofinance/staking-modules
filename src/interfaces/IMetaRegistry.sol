@@ -69,7 +69,6 @@ interface IMetaRegistry {
     error SameBondCurveWeight();
     error InvalidBondCurveWeight();
     error InvalidWeightBoostProvider();
-    error InvalidWeightBoostProviderMode();
     error WeightBoostProviderAlreadyAdded();
     error WeightBoostProviderNotFound();
     error SameWeightBoostProviderEnabled();
@@ -103,12 +102,13 @@ interface IMetaRegistry {
     function getWeightBoostProvidersCount() external view returns (uint256 count);
 
     /// @notice Returns configured weight boost provider entry by ID.
+    /// @dev Reverts with `WeightBoostProviderNotFound` for an unknown ID.
     /// @param providerId Provider ID.
-    /// @return entry Configured boost provider entry; zeroed for an unknown ID.
+    /// @return entry Configured boost provider entry.
     function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry);
 
     /// @notice Returns configured weight boost provider mode by ID.
-    /// @dev An unknown ID reads as `PerNodeOperator`; check the entry's provider address first.
+    /// @dev Reverts with `WeightBoostProviderNotFound` for an unknown ID.
     /// @param providerId Provider ID.
     /// @return mode Provider aggregation mode.
     function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode);

@@ -1337,6 +1337,23 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
         registry.setWeightBoostProviderEnabled(1, false);
     }
 
+    function test_setWeightBoostProviderEnabled_RevertWhen_IdIsZeroOrOutOfRange() public {
+        vm.prank(admin);
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.setWeightBoostProviderEnabled(0, false);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.addWeightBoostProvider(secondProvider, PER_NODE_OPERATOR_MODE);
+
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.setWeightBoostProviderEnabled(0, false);
+
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.setWeightBoostProviderEnabled(3, false);
+        vm.stopPrank();
+    }
+
     function test_notifyWeightBoostChanged_FromDisabledProviderDoesNotRefresh() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
         vm.prank(groupManager);
@@ -1557,7 +1574,7 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
         assertEq(registry.getNodeOperatorWeight(2), 5200);
     }
 
-    function test_refreshGroupWeights_UsesSameOrderedMultiplierAsOperatorRefresh() public {
+    function test_refreshGroupWeights_UsesSameMultiplierAsOperatorRefresh() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
         WeightBoostProviderMock thirdProvider = new WeightBoostProviderMock();
 
@@ -1584,6 +1601,97 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
         assertEq(registry.getNodeOperatorWeight(0), 30890);
     }
 
+    function test_refreshGroupWeights_TakesMaximumPerGroupProvider() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        WeightBoostProviderMock thirdProvider = new WeightBoostProviderMock();
+
+        // A and C maxima sit on different operators.
+        provider.mock_setMultiplierBP(0, 10333);
+        provider.mock_setMultiplierBP(1, 10777);
+        thirdProvider.mock_setMultiplierBP(0, 11911);
+        thirdProvider.mock_setMultiplierBP(1, 10003);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        registry.addWeightBoostProvider(thirdProvider, MAX_PER_GROUP_MODE);
+        vm.stopPrank();
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 6418);
+        assertEq(registry.getNodeOperatorWeight(1), 6418);
+    }
+
+    function test_refreshWeights_ProviderOrderDoesNotAffectWeight() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        WeightBoostProviderMock groupProvider = new WeightBoostProviderMock();
+        WeightBoostProviderMock thirdProvider = new WeightBoostProviderMock();
+
+        // Each operator sees the same per-operator raw values in a different provider order.
+        provider.mock_setMultiplierBP(0, 16293);
+        secondProvider.mock_setMultiplierBP(0, 7500);
+        thirdProvider.mock_setMultiplierBP(0, 13527);
+        provider.mock_setMultiplierBP(1, 13527);
+        secondProvider.mock_setMultiplierBP(1, 16293);
+        thirdProvider.mock_setMultiplierBP(1, 7500);
+        provider.mock_setMultiplierBP(2, 7500);
+        secondProvider.mock_setMultiplierBP(2, 13527);
+        thirdProvider.mock_setMultiplierBP(2, 16293);
+        for (uint256 i; i < 3; ++i) groupProvider.mock_setMultiplierBP(i, 14016);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.addWeightBoostProvider(secondProvider, PER_NODE_OPERATOR_MODE);
+        registry.addWeightBoostProvider(groupProvider, MAX_PER_GROUP_MODE);
+        registry.addWeightBoostProvider(thirdProvider, PER_NODE_OPERATOR_MODE);
+        vm.stopPrank();
+
+        uint256 firstGroupId = _nextGroupId();
+        for (uint64 i; i < 3; ++i) {
+            vm.prank(groupManager);
+            _createGroup(_subOperatorsArr1(i, MAX_BP), _extOperatorsArr0());
+        }
+
+        for (uint256 i; i < 3; ++i) assertEq(registry.getNodeOperatorWeight(i), 23167);
+
+        for (uint256 i; i < 3; ++i) registry.refreshOperatorWeight(i);
+        for (uint256 i; i < 3; ++i) assertEq(registry.getNodeOperatorWeight(i), 23167);
+
+        for (uint256 i; i < 3; ++i) registry.refreshGroupWeights(firstGroupId + i);
+        for (uint256 i; i < 3; ++i) assertEq(registry.getNodeOperatorWeight(i), 23167);
+    }
+
+    function test_refreshWeights_ManyIdentityProvidersDoNotOverflow() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        vm.startPrank(admin);
+        for (uint256 i; i < 20; ++i) {
+            registry.addWeightBoostProvider(new WeightBoostProviderMock(), PER_NODE_OPERATOR_MODE);
+        }
+        vm.stopPrank();
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+
+        registry.refreshOperatorWeight(0);
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+    }
+
     function test_refreshOperatorWeight_AllowsProviderMultiplierBelowBaseline() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
         vm.prank(groupManager);
@@ -1601,6 +1709,27 @@ contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
     function test_notifyWeightBoostChanged_RevertWhen_ProviderNotFound() public {
         vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
         registry.notifyWeightBoostChanged(0);
+    }
+
+    function test_getWeightBoostProvider_RevertWhen_IdIsZeroOrOutOfRange() public {
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.getWeightBoostProvider(1);
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.getWeightBoostProviderMode(1);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        registry.addWeightBoostProvider(secondProvider, MAX_PER_GROUP_MODE);
+        vm.stopPrank();
+
+        uint256 count = registry.getWeightBoostProvidersCount();
+        uint256[2] memory ids = [uint256(0), count + 1];
+        for (uint256 i; i < ids.length; ++i) {
+            vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+            registry.getWeightBoostProvider(ids[i]);
+            vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+            registry.getWeightBoostProviderMode(ids[i]);
+        }
     }
 
     function test_refreshGroupWeights_RevertWhen_InvalidGroupId() public {
@@ -1776,7 +1905,7 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         assertEq(weight, 15_000); // 10000 * 15000 / 10000
     }
 
-    function test_refreshOperatorWeight_TierWeightMultiplierScalesAfterShare() public {
+    function test_refreshOperatorWeight_TierWeightMultiplierAppliesToUnroundedShare() public {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 1 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({
             nodeOperatorId: 1,
@@ -1794,7 +1923,7 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         registry.refreshOperatorWeight(0);
 
         (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(0);
-        assertEq(weight, 1); // shared=1, 1 * 19999 / 10000 = 1
+        assertEq(weight, 2); // floor(10001 * 1 * 19999 / MAX_BP^2) = floor(2.0001) = 2
     }
 }
 
