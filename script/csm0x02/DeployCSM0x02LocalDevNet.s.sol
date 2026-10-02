@@ -41,7 +41,6 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;
         config.bondLockPeriod = 1 days;
-        config.setResetBondCurveAddress = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
         config.moduleType = "community-onchain-v1"; // Type identifier used by the off-chain tooling

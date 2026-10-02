@@ -61,7 +61,6 @@ struct DeployCSM0x02Params {
     uint256 minBondLockPeriod;
     uint256 maxBondLockPeriod;
     uint256 bondLockPeriod;
-    address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
     bytes32 moduleType;
@@ -357,8 +356,6 @@ abstract contract DeployCSM0x02Base is Script {
             verifier.grantRole(verifier.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
-
-            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
 
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
