@@ -220,10 +220,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(deploymentConfig.parametersRegistry));
             vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
-            // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
+            // 3-4. Upgrade and finalize ParametersRegistry v4 in a single tx
             parametersRegistryProxy.proxy__upgradeToAndCall(
                 deploymentConfig.parametersRegistryImpl,
-                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, ())
+                abi.encodeCall(ParametersRegistry.finalizeUpgradeV4, (deployParams.defaultSlashingPenalty))
             );
             vm.stopBroadcast();
         }
@@ -316,11 +316,6 @@ contract SimulateVote is Script, ForkHelpersCommon {
             module.grantRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3);
             // 21. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
             module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), deploymentConfig.verifierV3);
-            // 22. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
-            module.grantRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                deployParams.easyTrackEVMScriptExecutor
-            );
             // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
             module.revokeRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate);
             // 24. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
@@ -398,15 +393,5 @@ contract SimulateVote is Script, ForkHelpersCommon {
             twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
             vm.stopBroadcast();
         }
-    }
-
-    /// @dev Simulation helper only. Executes post-vote state preparation that is not part of the vote payload.
-    function postUpgrade() external {
-        _setUp();
-        if (moduleType != ModuleType.Community) revert WrongModuleType();
-
-        vm.startBroadcast(_prepareAdmin(address(module)));
-        module.rebuildTotalWithdrawnValidators();
-        vm.stopBroadcast();
     }
 }

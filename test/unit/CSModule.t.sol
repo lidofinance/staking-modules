@@ -103,13 +103,13 @@ contract CSMCommon is ModuleFixtures {
         module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.VERIFIER_ROLE(), address(this));
         module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
-        module.grantRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), address(this));
         vm.stopPrank();
     }
 
     function _moduleInvariants() internal override {
         assertModuleEnqueuedCount(csm);
         assertModuleKeys(module);
+        assertModuleSlashings(module);
     }
 
     // Checks that the queue is in the expected state starting from its head.
@@ -341,23 +341,6 @@ contract CsmInitialize is CSMCommon {
         assertEq(csm.getRoleMemberCount(csm.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(csm.isPaused());
         assertEq(csm.getInitializedVersion(), 3);
-    }
-
-    function test_rebuildTotalWithdrawnValidators_DoesNothingWhen_InitializedFromScratch() public {
-        CSModule csm = new CSModule({
-            moduleType: "community-staking-module",
-            lidoLocator: address(locator),
-            parametersRegistry: address(parametersRegistry),
-            accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
-        });
-
-        _enableInitializers(address(csm));
-        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
-
-        vm.recordLogs();
-        csm.rebuildTotalWithdrawnValidators();
-        assertEq(vm.getRecordedLogs().length, 0);
     }
 
     function test_finalizeUpgradeV3_ClearsFreeSlotsAndDisablesTopUpQueue() public {
@@ -987,8 +970,7 @@ contract CSMTopUpQueue is CSMCommon {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 
@@ -1018,7 +1000,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory key1 = slice(packedPubkeys, 48, 48);
 
         // Slashed keys must not receive new top-ups even though the top-up queue still references them.
-        csm.reportValidatorSlashing(0, 0);
+        csm.reportValidatorSlashing(0, 0, 0);
         assertTrue(csm.isValidatorSlashed(0, 0));
         assertEq(_getTopUpQueueLength(), 2);
 
@@ -1032,8 +1014,9 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(allocations, UintArr(0, 4 ether));
         assertEq(csm.getKeyAllocatedBalances(0, 0, 2), UintArr(0, 4 ether));
-        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
-        assertEq(module.getNodeOperatorBalance(0), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        // The slashed key is withdrawn right on the report, so only the topped-up key is left staked.
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(module.getNodeOperatorBalance(0), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         // Both the slashed head key and the topped-up follower must be cleared from the queue.
         assertEq(_getTopUpQueueLength(), 0);
     }
@@ -1212,8 +1195,7 @@ contract CSMTopUpQueue is CSMCommon {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: 40 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         csm.reportRegularWithdrawnValidators(infos);
@@ -1760,8 +1742,7 @@ contract CSMQueueOps is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectEmit(address(module));
@@ -2229,8 +2210,7 @@ contract CSMTotalModuleStake is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 
@@ -2302,110 +2282,12 @@ contract CSMTotalModuleStake is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperatorBalance(noId), 0);
-    }
-}
-
-contract CSMFinalizeUpgradeV3 is CSMCommon {
-    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT = bytes32(uint256(1));
-    uint64 internal expectedTotalWithdrawn;
-
-    function setUp() public override {
-        super.setUp();
-
-        vm.pauseGasMetering();
-
-        uint256 operatorsCount = 32;
-
-        for (uint256 i; i < operatorsCount; ++i) {
-            createNodeOperator(1);
-        }
-
-        module.obtainDepositData(operatorsCount, "");
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](operatorsCount);
-
-        for (uint256 i; i < operatorsCount; ++i) {
-            validatorInfos[i] = WithdrawnValidatorInfo({
-                nodeOperatorId: i,
-                keyIndex: 0,
-                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-                slashingPenalty: 0,
-                isSlashed: false
-            });
-        }
-
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        // forge-lint: disable-next-line(unsafe-typecast)
-        expectedTotalWithdrawn = uint64(operatorsCount);
-
-        vm.store(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT, bytes32(0));
-        vm.store(address(module), INITIALIZABLE_STORAGE, bytes32(uint256(2)));
-
-        vm.resumeGasMetering();
-    }
-
-    function test_rebuildTotalWithdrawnValidators_MigratesTotalWithdrawnValidators() public {
-        csm.finalizeUpgradeV3();
-
-        vm.startSnapshotGas("rebuildTotalWithdrawnValidators");
-        csm.rebuildTotalWithdrawnValidators();
-        uint256 gasUsed = vm.stopSnapshotGas();
-        emit log_named_uint("rebuildTotalWithdrawnValidators gas", gasUsed);
-
-        uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
-        assertEq(migrated, expectedTotalWithdrawn);
-    }
-
-    function test_rebuildTotalWithdrawnValidators_RevertWhen_UpgradeIsNotFinalized() public {
-        vm.expectRevert(ICSModule.UpgradeIsNotFinalized.selector);
-        csm.rebuildTotalWithdrawnValidators();
-    }
-
-    function test_rebuildTotalWithdrawnValidators_DoesNothingWhen_CalledTwice() public {
-        csm.finalizeUpgradeV3();
-        csm.rebuildTotalWithdrawnValidators();
-
-        vm.recordLogs();
-        csm.rebuildTotalWithdrawnValidators();
-        assertEq(vm.getRecordedLogs().length, 0);
-
-        uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
-        assertEq(migrated, expectedTotalWithdrawn);
-    }
-
-    function test_rebuildTotalWithdrawnValidators_IncludesPostFinalizeWithdrawals() public {
-        csm.finalizeUpgradeV3();
-
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        uint256 reportedAfterFinalize = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) &
-            type(uint64).max;
-        assertEq(reportedAfterFinalize, 1);
-
-        csm.rebuildTotalWithdrawnValidators();
-
-        uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
-        assertEq(migrated, expectedTotalWithdrawn + 1);
     }
 }
 
@@ -2510,14 +2392,6 @@ contract CSMMisc is ModuleMisc, CSMCommon {
         module.requestFullDepositInfoUpdate();
     }
 }
-
-contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}
-
-contract CSMIsValidatorExitDelayPenaltyApplicable is ModuleIsValidatorExitDelayPenaltyApplicable, CSMCommon {}
-
-contract CSMReportValidatorExitDelay is ModuleReportValidatorExitDelay, CSMCommon {}
-
-contract CSMOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CSMCommon {}
 
 contract CSMCreateNodeOperators is ModuleCreateNodeOperators, CSMCommon {}
 

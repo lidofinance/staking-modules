@@ -69,6 +69,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
             loadedKeysCount += allocation;
 
+            if (no.totalDepositedKeys == 0) $.nodeOperatorFirstDepositAt[operatorId] = block.timestamp;
+
             // `allocation` is capped by depositableValidatorsCount which is uint32.
             // forge-lint: disable-next-line(unsafe-typecast)
             uint32 totalDepositedKeys = no.totalDepositedKeys + uint32(allocation);

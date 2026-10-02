@@ -30,6 +30,14 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
+    function test_createNodeOperator_doesNotSetFirstDepositAt() public {
+        vm.warp(1_754_000_000);
+
+        uint256 noId = createNodeOperator();
+
+        assertEq(module.getNodeOperatorFirstDepositAt(noId), 0);
+    }
+
     function test_createNodeOperator_whenDepositInfoUpdateIsRequested() public assertInvariants {
         createNodeOperator(1);
         vm.prank(address(accounting));
@@ -184,8 +192,7 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);

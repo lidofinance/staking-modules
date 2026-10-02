@@ -165,6 +165,8 @@ abstract contract OracleTestBase is ModuleTypeBase {
     }
 
     function test_reportStrikes() public assertInvariants {
+        _skipOnLegacyRouter();
+
         uint256 distributed = 0;
         bytes32 feeTreeRootBefore = feeDistributor.treeRoot();
         string memory feeTreeCidBefore = feeDistributor.treeCid();
@@ -219,8 +221,6 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(nodeOperatorId, key);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
-        assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
-        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, expectedWithdrawalFee);
         assertEq(refundRecipient.balance, initialBalance - expectedWithdrawalFee);
     }
 

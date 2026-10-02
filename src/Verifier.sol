@@ -44,6 +44,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     uint64 public immutable SLOTS_PER_EPOCH;
 
+    uint64 public immutable SECONDS_PER_SLOT;
+
     /// @dev Count of historical roots per accumulator.
     /// @dev See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
     uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192;
@@ -97,6 +99,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         address withdrawalAddress,
         address module,
         uint64 slotsPerEpoch,
+        uint64 secondsPerSlot,
         GIndices memory gindices,
         Slot firstSupportedSlot,
         Slot pivotSlot,
@@ -107,7 +110,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
         if (module == address(0)) revert ZeroModuleAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
-        if (slotsPerEpoch == 0) revert InvalidChainConfig();
+        if (slotsPerEpoch == 0 || secondsPerSlot == 0) revert InvalidChainConfig();
         if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
@@ -117,6 +120,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         MIN_WITHDRAWAL_RATIO = minWithdrawalRatio;
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
+        SECONDS_PER_SLOT = secondsPerSlot;
 
         GI_FIRST_WITHDRAWAL_PREV = gindices.gIFirstWithdrawalPrev;
         GI_FIRST_WITHDRAWAL_CURR = gindices.gIFirstWithdrawalCurr;
@@ -161,7 +165,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
-        MODULE.reportValidatorSlashing(data.validator.nodeOperatorId, data.validator.keyIndex);
+        MODULE.reportValidatorSlashing(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            _timeToWithdrawable(data.validator.object.withdrawableEpoch, data.recentBlock.header.slot)
+        );
     }
 
     /// @inheritdoc IVerifier
@@ -194,8 +202,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
                 exitBalance: withdrawalAmount,
-                slashingPenalty: 0,
-                isSlashed: false
+                slashingPenalty: 0
             })
         );
     }
@@ -239,8 +246,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
                 exitBalance: withdrawalAmount,
-                slashingPenalty: 0,
-                isSlashed: false
+                slashingPenalty: 0
             })
         );
     }
@@ -448,6 +454,14 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function _computeEpochAtSlot(Slot slot) internal view returns (uint256) {
         // See: github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
         return slot.unwrap() / SLOTS_PER_EPOCH;
+    }
+
+    function _timeToWithdrawable(uint64 withdrawableEpoch, Slot headerSlot) internal view returns (uint256) {
+        uint256 withdrawableSlot = uint256(withdrawableEpoch) * SLOTS_PER_EPOCH;
+        uint256 slot = headerSlot.unwrap();
+        if (withdrawableSlot <= slot) return 0;
+
+        return (withdrawableSlot - slot) * SECONDS_PER_SLOT;
     }
 
     function __checkRole(bytes32 role) internal view override {

@@ -22,6 +22,10 @@ contract ParametersRegistryMock {
 
     uint256 public badPerformancePenalty = 0.01 ether;
 
+    uint256 public slashingPenalty = 1 ether;
+
+    uint256 public defaultPerformanceLeeway = 10_000;
+
     uint256 public QUEUE_LOWEST_PRIORITY;
 
     function setQueueLowestPriority(uint256 value) external {
@@ -76,6 +80,14 @@ contract ParametersRegistryMock {
         badPerformancePenalty = penalty;
     }
 
+    function getSlashingPenalty(uint256 /* curveId */) external view returns (uint256) {
+        return slashingPenalty;
+    }
+
+    function setSlashingPenalty(uint256 /* curveId */, uint256 penalty) external {
+        slashingPenalty = penalty;
+    }
+
     function setQueueConfig(uint256 curveId, uint256 priority, uint256 maxDeposits) external {
         _queueConfigs[curveId] = MarkedQueueConfig({
             // Both values are tiny in tests (priority <= QUEUE_LOWEST_PRIORITY, maxDeposits <= keysLimit < 2^32), so the truncating cast is safe.
@@ -90,6 +102,10 @@ contract ParametersRegistryMock {
     function setRewardShareData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
 
     function setPerformanceLeewayData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
+
+    function setDefaultPerformanceLeeway(uint256 leeway) external {
+        defaultPerformanceLeeway = leeway;
+    }
 
     function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits) {
         MarkedQueueConfig storage config = _queueConfigs[curveId];

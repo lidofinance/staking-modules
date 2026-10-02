@@ -21,6 +21,9 @@ import { Versioned } from "../../../src/lib/utils/Versioned.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
     uint256 expectedModuleScratchNonce;
+    uint256 expectedModuleScratchNonceFromGates;
+    uint256 expectedModuleScratchNonceFromWeightBoostProviders;
+    uint256 expectedModuleScratchNonceFromWeightBoostProviderConfigChanges;
 
     function setUp() public {
         Env memory env = envVars();
@@ -32,7 +35,19 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         if (moduleType == ModuleType.Curated) {
             // Curated deployment sets bond-curve weights once per gate. Each set triggers
             // requestFullDepositInfoUpdate(), which increments module nonce.
-            expectedModuleScratchNonce = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+            expectedModuleScratchNonceFromGates = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+
+            // Each registered weight boost provider also requests full update and contributes one nonce.
+            expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProvidersCount();
+
+            // Each async weight boost provider config change also requests full update.
+            expectedModuleScratchNonceFromWeightBoostProviderConfigChanges = deployParams
+                .weightBoostProviderConfigChangesCount;
+
+            expectedModuleScratchNonce =
+                expectedModuleScratchNonceFromGates +
+                expectedModuleScratchNonceFromWeightBoostProviders +
+                expectedModuleScratchNonceFromWeightBoostProviderConfigChanges;
         }
     }
 }
@@ -89,13 +104,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1);
         assertTrue(module.hasRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier)));
         assertEq(module.getRoleMemberCount(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()), 1);
-        assertTrue(
-            module.hasRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                address(deployParams.easyTrackEVMScriptExecutor)
-            )
-        );
-        assertEq(module.getRoleMemberCount(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()), 1);
 
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0);
     }
@@ -453,7 +461,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state_onlyFull() public view {
-        assertEq(parametersRegistry.getInitializedVersion(), 3);
+        assertEq(parametersRegistry.getInitializedVersion(), 4);
     }
 
     function test_roles_onlyFull() public view {
@@ -511,7 +519,8 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee,
+                defaultSlashingPenalty: deployParams.defaultSlashingPenalty
             });
     }
 }

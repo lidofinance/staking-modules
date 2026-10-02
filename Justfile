@@ -214,14 +214,15 @@ bind-json out=`forge config --json | jq -r .bind_json.out`:
     #!/usr/bin/env bash
     set -euo pipefail
     forge bind-json "{{out}}" >/dev/null
-    sed -i 's/) public pure returns (/) internal pure returns (/' "{{out}}"
+    sed -i.bak 's/) public pure returns (/) internal pure returns (/' "{{out}}"
+    rm -f "{{out}}.bak"
 
 # Check that the generated bindings are in sync with the structs
 bind-json-check:
     #!/usr/bin/env bash
     set -euo pipefail
     bindings=$(forge config --json | jq -r .bind_json.out)
-    expected=$(mktemp --suffix=.sol)
+    expected=$(mktemp)
     trap 'rm -f "$expected"' EXIT
     just bind-json "$expected"
     if ! diff -u "$bindings" "$expected"; then

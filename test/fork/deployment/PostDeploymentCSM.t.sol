@@ -122,7 +122,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
-        assertEq(parametersRegistry.getInitializedVersion(), 3);
+        assertEq(parametersRegistry.getInitializedVersion(), 4);
     }
 
     function test_legacyEaCurve_onlyFull() public view {

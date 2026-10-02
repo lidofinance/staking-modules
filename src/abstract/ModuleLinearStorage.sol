@@ -29,6 +29,9 @@ abstract contract ModuleLinearStorage {
         /* 9 */ uint64 nodeOperatorsCount;
         /* 10 */ mapping(uint256 nodeOperatorId => uint256 extraBalance) operatorBalances;
         /* 11 */ uint256 totalExtraStake;
+        /* 12 */ mapping(uint256 nodeOperatorId => uint256 firstDepositAt) nodeOperatorFirstDepositAt;
+        /// @dev End of the slashing settlement period of the Node Operator, bond claims are restricted until then.
+        /* 13 */ mapping(uint256 nodeOperatorId => uint256) slashingSettleDeadline;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

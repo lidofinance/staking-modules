@@ -61,12 +61,14 @@ interface IBondCurve {
     event BondCurveAdded(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
     event BondCurveUpdated(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
     event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId, address indexed setter);
+    event BondCurveMultiplierSet(uint256 indexed nodeOperatorId, uint256 multiplier, address indexed setter);
 
     error InvalidBondCurveLength();
     error InvalidBondCurveValues();
     error InvalidBondCurveId();
     error InvalidInitializationCurveId();
     error SameBondCurveId();
+    error InvalidMultiplier();
 
     function DEFAULT_BOND_CURVE_ID() external view returns (uint256);
 
@@ -90,7 +92,11 @@ interface IBondCurve {
     /// @return Bond curve ID
     function getBondCurveId(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Get required bond in ETH for the given number of keys for the given bond curve
+    /// @notice Bond curve multiplier for the given Node Operator in basis points.
+    ///         MAX_BP (10_000) means no scaling, and is the default when none is set.
+    function getBondCurveMultiplier(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Get required bond in ETH for the given number of keys for the given bond curve with default `multiplier`.
     /// @dev To calculate the amount for the new keys 2 calls are required:
     ///      getBondAmountByKeysCount(newTotal) - getBondAmountByKeysCount(currentTotal)
     /// @param keys Number of keys to get required bond for
@@ -98,9 +104,33 @@ interface IBondCurve {
     /// @return Amount for particular keys count
     function getBondAmountByKeysCount(uint256 keys, uint256 curveId) external view returns (uint256);
 
-    /// @notice Get keys count for the given bond amount with the given bond curve
+    /// @notice Get required bond in ETH for the given number of keys, with the bond axis scaled by `multiplier`.
+    /// @dev Reverts with `InvalidMultiplier` if `multiplier < MAX_BP`.
+    /// @param keys Number of keys to get required bond for
+    /// @param curveId Id of the curve to perform calculations against
+    /// @param multiplier Curve scaling factor in basis points (>= MAX_BP; MAX_BP = no scaling)
+    /// @return Scaled amount for particular keys count
+    function getBondAmountByKeysCount(
+        uint256 keys,
+        uint256 curveId,
+        uint256 multiplier
+    ) external view returns (uint256);
+
+    /// @notice Get keys count for the given bond amount with the given bond curve with default `multiplier`.
     /// @param amount Bond amount in ETH (stETH) to get keys count for
     /// @param curveId Id of the curve to perform calculations against
     /// @return Keys count
     function getKeysCountByBondAmount(uint256 amount, uint256 curveId) external view returns (uint256);
+
+    /// @notice Get keys count for the given bond amount, with the bond axis scaled by `multiplier`.
+    /// @dev Reverts with `InvalidMultiplier` if `multiplier < MAX_BP`.
+    /// @param amount Bond amount in ETH (stETH) to get keys count for
+    /// @param curveId Id of the curve to perform calculations against
+    /// @param multiplier Curve scaling factor in basis points (>= MAX_BP; MAX_BP = no scaling)
+    /// @return Keys count on the scaled curve
+    function getKeysCountByBondAmount(
+        uint256 amount,
+        uint256 curveId,
+        uint256 multiplier
+    ) external view returns (uint256);
 }

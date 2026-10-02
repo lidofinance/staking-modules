@@ -12,19 +12,65 @@ import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+import { Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 
+/// @dev Minimal view of the wiring every weight boost provider exposes, so assertions can be shared across
+///      providers with different concrete types.
+interface IStepwiseProviderWiring {
+    function MODULE() external view returns (address);
+
+    function META_REGISTRY() external view returns (address);
+}
+
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
     CuratedGateConfig[] internal deployGateConfigs;
+    uint256 internal adminsCount;
+
+    /// @dev Asserts neither the proxy nor its implementation can be initialized again.
+    function _assertNotReinitializable(address proxyAddress, address impl, bytes memory initCalldata) internal {
+        _assertInvalidInitialization(proxyAddress, initCalldata);
+        _assertInvalidInitialization(impl, initCalldata);
+    }
+
+    /// @dev Asserts the provider points at the deployed module and MetaRegistry.
+    function _assertProviderWiring(address provider, string memory label) internal view {
+        assertEq(
+            IStepwiseProviderWiring(provider).MODULE(),
+            address(curatedModule),
+            string.concat(label, " module wiring")
+        );
+        assertEq(
+            IStepwiseProviderWiring(provider).META_REGISTRY(),
+            address(metaRegistry),
+            string.concat(label, " meta registry wiring")
+        );
+    }
+
+    /// @dev Asserts the configured step function round-trips through the provider.
+    function _assertSteps(Step[] memory actual, Step[] memory expected) internal view {
+        assertEq(actual.length, expected.length, "unexpected steps count");
+        for (uint256 i; i < expected.length; ++i) {
+            assertEq(actual[i].threshold, expected[i].threshold, "unexpected step threshold");
+            assertEq(actual[i].value, expected[i].value, "unexpected step value");
+        }
+    }
+
+    function _assertInvalidInitialization(address target, bytes memory initCalldata) private {
+        (bool success, bytes memory returnData) = target.call(initCalldata);
+        assertFalse(success, "initialize did not revert");
+        assertEq(bytes4(returnData), Initializable.InvalidInitialization.selector, "unexpected initialize revert");
+    }
 
     function setUp() public {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
         if (moduleType != ModuleType.Curated) vm.skip(true, "Current deployment is not Curated module type");
+        adminsCount = block.chainid == 1 ? 1 : 2;
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
@@ -65,6 +111,20 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
+    function _assertWeightBoostProvider(
+        uint256 expectedProviderId,
+        address expectedProvider,
+        IMetaRegistry.WeightBoostProviderMode expectedMode
+    ) internal view {
+        uint256 providerId = metaRegistry.getWeightBoostProviderId(expectedProvider);
+        assertEq(providerId, expectedProviderId, "unexpected weight boost provider ID");
+
+        IMetaRegistry.WeightBoostProviderEntry memory entry = metaRegistry.getWeightBoostProvider(expectedProviderId);
+        assertEq(address(entry.provider), expectedProvider, "unexpected weight boost provider");
+        assertEq(uint256(entry.mode), uint256(expectedMode), "unexpected weight boost provider mode");
+        assertTrue(entry.enabled, "weight boost provider disabled");
+    }
+
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getInitializedVersion(), 1);
         assertEq(metaRegistry.getOperatorGroupsCount(), 0);
@@ -104,6 +164,262 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
             0,
             "unexpected set bond curve weight role members count"
         );
+    }
+
+    function test_weightBoostProviders_onlyFull() public view {
+        assertEq(metaRegistry.getWeightBoostProvidersCount(), 4, "unexpected weight boost providers count");
+        _assertWeightBoostProvider(
+            1,
+            address(additionalBondRegistry),
+            IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
+        );
+        _assertWeightBoostProvider(
+            2,
+            address(nodeOperatorStrikes),
+            IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
+        );
+        _assertWeightBoostProvider(3, address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
+        _assertWeightBoostProvider(
+            4,
+            address(customFeeRegistry),
+            IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
+        );
+    }
+}
+
+contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(additionalBondRegistry.getInitializedVersion(), 1);
+        // Curve multiplier thresholds map to weight multiplier increments.
+        _assertSteps(additionalBondRegistry.getSteps(), deployParams.additionalBondRegistryConfig.boostSteps);
+        assertEq(
+            additionalBondRegistry.getCurveMultiplierReductionCooldown(),
+            deployParams.additionalBondRegistryConfig.curveMultiplierReductionCooldown,
+            "additional bond registry cooldown"
+        );
+    }
+
+    function test_immutables_onlyFull() public view {
+        _assertProviderWiring(address(additionalBondRegistry), "additional bond registry");
+        assertEq(
+            address(additionalBondRegistry.ACCOUNTING()),
+            address(accounting),
+            "additional bond registry accounting"
+        );
+        assertEq(
+            additionalBondRegistry.MAX_CURVE_MULTIPLIER(),
+            90_000,
+            "additional bond registry max curve multiplier"
+        );
+        assertEq(additionalBondRegistry.CURVE_MULTIPLIER_STEP(), 100, "additional bond registry curve multiplier step");
+        assertEq(
+            additionalBondRegistry.MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN(),
+            365 days,
+            "additional bond registry max cooldown"
+        );
+        assertEq(additionalBondRegistry.MAX_STEPS(), 35, "additional bond registry max steps");
+        assertEq(additionalBondRegistry.MAX_STEP_VALUE(), 90_000, "additional bond registry max weight multiplier");
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(additionalBondRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
+
+        // AdditionalBondRegistry must be able to update the operator curve multiplier in Accounting.
+        assertTrue(
+            accounting.hasRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry)),
+            "additional bond registry missing accounting set curve multiplier role"
+        );
+    }
+
+    function test_initialization_onlyFull() public {
+        _assertNotReinitializable(
+            address(additionalBondRegistry),
+            address(additionalBondRegistryImpl),
+            abi.encodeCall(additionalBondRegistry.initialize, (deployParams.aragonAgent, 7 days, new Step[](0)))
+        );
+    }
+
+    function test_proxy_onlyFull() public view {
+        _assertProxy(
+            address(additionalBondRegistry),
+            address(additionalBondRegistryImpl),
+            deployParams.proxyAdmin,
+            "additional bond registry"
+        );
+    }
+}
+
+contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(nodeOperatorStrikes.getInitializedVersion(), 1);
+        // Strike count thresholds map to weight reductions in basis points.
+        _assertSteps(nodeOperatorStrikes.getSteps(), deployParams.nodeOperatorStrikesConfig.thresholds);
+    }
+
+    function test_immutables_onlyFull() public view {
+        _assertProviderWiring(address(nodeOperatorStrikes), "node operator strikes");
+        assertEq(nodeOperatorStrikes.MAX_DESCRIPTION_LENGTH(), 1024, "strikes max description length");
+        assertEq(nodeOperatorStrikes.MAX_STEPS(), 35, "strikes max steps");
+        assertEq(nodeOperatorStrikes.MAX_STEP_VALUE(), 90_000, "strikes max step value");
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(nodeOperatorStrikes), deployParams.aragonAgent, deployParams.secondAdminAddress);
+
+        bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
+        assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
+        assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.nodeOperatorStrikesConfig.committee));
+    }
+
+    function test_initialization_onlyFull() public {
+        _assertNotReinitializable(
+            address(nodeOperatorStrikes),
+            address(nodeOperatorStrikesImpl),
+            abi.encodeCall(nodeOperatorStrikes.initialize, (deployParams.aragonAgent, new Step[](0)))
+        );
+    }
+
+    function test_proxy_onlyFull() public view {
+        _assertProxy(
+            address(nodeOperatorStrikes),
+            address(nodeOperatorStrikesImpl),
+            deployParams.proxyAdmin,
+            "strikes"
+        );
+    }
+}
+
+contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(ldoLockBoostProvider.getInitializedVersion(), 1);
+        assertEq(
+            ldoLockBoostProvider.getLockPeriod(),
+            deployParams.ldoLockBoostProviderConfig.lockPeriod,
+            "LDO lock provider lock period"
+        );
+
+        // Locked amount thresholds map to weight boosts in basis points.
+        _assertSteps(ldoLockBoostProvider.getSteps(), deployParams.ldoLockBoostProviderConfig.lockBoostSteps);
+    }
+
+    function test_immutables_onlyFull() public view {
+        _assertProviderWiring(address(ldoLockBoostProvider), "LDO lock provider");
+        assertEq(
+            ldoLockBoostProvider.TOKEN(),
+            deployParams.ldoLockBoostProviderConfig.token,
+            "LDO lock provider token"
+        );
+        assertEq(
+            address(ldoLockBoostProvider.VAULT_BEACON()),
+            address(ldoLockVaultBeacon),
+            "LDO lock provider vault beacon"
+        );
+        assertEq(
+            ldoLockBoostProvider.MIN_LOCK_PERIOD(),
+            deployParams.ldoLockBoostProviderConfig.minLockPeriod,
+            "LDO lock provider min lock period"
+        );
+        assertEq(ldoLockBoostProvider.MAX_LOCK_PERIOD(), 365 days, "LDO lock provider max lock period");
+        assertEq(ldoLockBoostProvider.MAX_STEPS(), 35, "LDO lock provider max steps");
+        assertEq(ldoLockBoostProvider.MAX_STEP_VALUE(), 90_000, "LDO lock provider max step value");
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(ldoLockBoostProvider), deployParams.aragonAgent, deployParams.secondAdminAddress);
+    }
+
+    function test_vaultBeacon_onlyFull() public view {
+        assertGt(address(ldoLockVaultImpl).code.length, 0, "LDO lock vault impl code");
+        assertGt(address(ldoLockVaultBeacon).code.length, 0, "LDO lock vault beacon code");
+        assertEq(ldoLockVaultBeacon.implementation(), address(ldoLockVaultImpl), "LDO lock vault beacon impl");
+        assertEq(ldoLockVaultBeacon.owner(), deployParams.aragonAgent, "LDO lock vault beacon owner");
+    }
+
+    function test_vaultImplementation_onlyFull() public view {
+        assertEq(ldoLockVaultImpl.nodeOperatorId(), 0, "LDO lock vault impl node operator ID");
+        assertEq(ldoLockVaultImpl.TOKEN(), deployParams.ldoLockBoostProviderConfig.token, "LDO lock vault impl token");
+        assertEq(ldoLockVaultImpl.PROVIDER(), address(ldoLockBoostProvider), "LDO lock vault impl provider");
+        assertEq(address(ldoLockVaultImpl.MODULE()), address(curatedModule), "LDO lock vault impl module");
+        assertEq(
+            ldoLockVaultImpl.VOTING_CONTRACT(),
+            deployParams.ldoLockBoostProviderConfig.votingContract,
+            "LDO lock vault impl voting"
+        );
+        assertEq(
+            ldoLockVaultImpl.snapshotDelegation(),
+            deployParams.ldoLockBoostProviderConfig.snapshotDelegation,
+            "LDO lock vault impl snapshot delegation"
+        );
+    }
+
+    function test_initialization_onlyFull() public {
+        _assertNotReinitializable(
+            address(ldoLockBoostProvider),
+            address(ldoLockBoostProviderImpl),
+            abi.encodeCall(
+                ldoLockBoostProvider.initialize,
+                (
+                    deployParams.aragonAgent,
+                    deployParams.ldoLockBoostProviderConfig.lockPeriod,
+                    deployParams.ldoLockBoostProviderConfig.lockBoostSteps
+                )
+            )
+        );
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ldoLockVaultImpl.initialize(0);
+    }
+
+    function test_proxy_onlyFull() public view {
+        _assertProxy(
+            address(ldoLockBoostProvider),
+            address(ldoLockBoostProviderImpl),
+            deployParams.proxyAdmin,
+            "LDO lock provider"
+        );
+    }
+}
+
+contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(customFeeRegistry.getInitializedVersion(), 1);
+        assertEq(
+            customFeeRegistry.getFeeShareDiscountCutCooldown(),
+            deployParams.customFeeRegistryConfig.feeShareDiscountCutCooldown
+        );
+
+        _assertSteps(customFeeRegistry.getSteps(), deployParams.customFeeRegistryConfig.boostSteps);
+    }
+
+    function test_immutables_onlyFull() public view {
+        _assertProviderWiring(address(customFeeRegistry), "custom fee registry");
+        assertEq(customFeeRegistry.FEE_SHARE_DISCOUNT_STEP(), 100, "custom fee share discount step");
+        assertEq(customFeeRegistry.MAX_STEPS(), 35, "custom fee max weight steps");
+        assertEq(customFeeRegistry.MAX_STEP_VALUE(), 90_000, "custom fee max weight multiplier");
+        assertEq(
+            customFeeRegistry.MAX_FEE_SHARE_DISCOUNT_CUT_COOLDOWN(),
+            365 days,
+            "custom fee max discount cut cooldown"
+        );
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(customFeeRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
+    }
+
+    function test_initialization_onlyFull() public {
+        _assertNotReinitializable(
+            address(customFeeRegistry),
+            address(customFeeRegistryImpl),
+            abi.encodeCall(
+                customFeeRegistry.initialize,
+                (deployParams.aragonAgent, 15 days, deployParams.customFeeRegistryConfig.boostSteps)
+            )
+        );
+    }
+
+    function test_proxy_onlyFull() public view {
+        _assertProxy(address(customFeeRegistry), address(customFeeRegistryImpl), deployParams.proxyAdmin, "custom fee");
     }
 }
 

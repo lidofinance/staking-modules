@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
-import { IExitPenalties, ExitPenaltyInfo } from "src/interfaces/IExitPenalties.sol";
+import { ExitPenaltyInfo } from "src/interfaces/IExitPenalties.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { IValidatorStrikes } from "src/interfaces/IValidatorStrikes.sol";
 
@@ -133,14 +133,6 @@ abstract contract ParametersRegistryTestBase is ModuleTypeBase {
             newFee,
             "Max EL withdrawal request fee should be updated"
         );
-
-        _grantStakingRouterRole();
-        bytes memory pubkey = module.getSigningKeys(defaultNoId, 0, 1);
-        module.onValidatorExitTriggered(defaultNoId, pubkey, newFee + 0.01 ether, exitPenalties.STRIKES_EXIT_TYPE_ID());
-
-        ExitPenaltyInfo memory penaltyInfo = _getExitPenaltyInfo(pubkey);
-        assertTrue(penaltyInfo.elWithdrawalRequestFee.isValue, "EL withdrawal fee should be recorded");
-        assertEq(penaltyInfo.elWithdrawalRequestFee.value, newFee, "EL withdrawal fee should be capped by max value");
     }
 
     function _assertSetQueueConfig() internal {
@@ -241,22 +233,6 @@ abstract contract ParametersRegistryTestBase is ModuleTypeBase {
         parametersRegistry.setAllowedExitDelay(bondCurveId, delay);
 
         assertEq(parametersRegistry.getAllowedExitDelay(bondCurveId), delay, "Allowed exit delay should be updated");
-
-        _grantStakingRouterRole();
-        bytes memory pubkey = module.getSigningKeys(defaultNoId, 0, 1);
-
-        vm.expectRevert(IExitPenalties.ValidatorExitDelayNotApplicable.selector);
-        module.reportValidatorExitDelay(defaultNoId, 12345, pubkey, delay);
-
-        module.reportValidatorExitDelay(defaultNoId, 12345, pubkey, delay + 1);
-
-        ExitPenaltyInfo memory penaltyInfo = _getExitPenaltyInfo(pubkey);
-        assertTrue(penaltyInfo.delayFee.isValue, "Delay fee should be recorded");
-        assertEq(
-            penaltyInfo.delayFee.value,
-            parametersRegistry.getExitDelayFee(bondCurveId),
-            "Delay fee should match current curve setting"
-        );
     }
 
     function test_setExitDelayFee() public assertInvariants {
@@ -264,16 +240,6 @@ abstract contract ParametersRegistryTestBase is ModuleTypeBase {
         parametersRegistry.setExitDelayFee(bondCurveId, fee);
 
         assertEq(parametersRegistry.getExitDelayFee(bondCurveId), fee, "Exit delay fee should be updated");
-
-        parametersRegistry.setAllowedExitDelay(bondCurveId, 1);
-        _grantStakingRouterRole();
-        bytes memory pubkey = module.getSigningKeys(defaultNoId, 0, 1);
-
-        module.reportValidatorExitDelay(defaultNoId, 12345, pubkey, 2);
-
-        ExitPenaltyInfo memory penaltyInfo = _getExitPenaltyInfo(pubkey);
-        assertTrue(penaltyInfo.delayFee.isValue, "Delay fee should be recorded");
-        assertEq(penaltyInfo.delayFee.value, fee, "Delay fee should match updated value");
     }
 
     function test_setBadPerformancePenalty() public assertInvariants {

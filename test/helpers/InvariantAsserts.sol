@@ -156,6 +156,24 @@ contract InvariantAsserts is Test {
         );
     }
 
+    /// @dev Only holds for the state built from scratch, since the slashings reported before the settlement on the
+    ///      slashing report was introduced might be left pending a withdrawal.
+    function assertModuleSlashings(IBaseModule module) public {
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
+
+        uint256 noCount = module.getNodeOperatorsCount();
+
+        for (uint256 noId = 0; noId < noCount; ++noId) {
+            uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
+
+            for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
+                if (!module.isValidatorSlashed(noId, keyIndex)) continue;
+                assertTrue(module.isValidatorWithdrawn(noId, keyIndex), "assert slashed validator is withdrawn");
+            }
+        }
+    }
+
     mapping(uint256 => uint256) batchKeys;
 
     function assertModuleEnqueuedCount(ICSModule csm) public {

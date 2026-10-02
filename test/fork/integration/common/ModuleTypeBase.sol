@@ -8,6 +8,8 @@ import { Utilities } from "../../../helpers/Utilities.sol";
 import { InvariantAsserts } from "../../../helpers/InvariantAsserts.sol";
 
 abstract contract ModuleTypeBase is DeploymentFixtures, Utilities, InvariantAsserts {
+    uint256 private constant MIN_STAKING_ROUTER_VERSION_WITHOUT_EXIT_HOOK = 5;
+
     IForkIntegrationHelpers internal integrationHelpers;
 
     function _setUpModule() internal virtual;
@@ -18,6 +20,13 @@ abstract contract ModuleTypeBase is DeploymentFixtures, Utilities, InvariantAsse
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
+    }
+
+    function _skipOnLegacyRouter() internal {
+        vm.skip(
+            stakingRouter.getContractVersion() < MIN_STAKING_ROUTER_VERSION_WITHOUT_EXIT_HOOK,
+            "Requires StakingRouter without onValidatorExitTriggered module hook"
+        );
     }
 }
 

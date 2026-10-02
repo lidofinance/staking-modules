@@ -7,6 +7,7 @@ import { stdError } from "forge-std/Test.sol";
 
 import { BaseTest, BondStateBaseTest, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
+import { MAX_BP } from "src/lib/Constants.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IBondLock } from "src/interfaces/IBondLock.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
@@ -159,6 +160,21 @@ contract ClaimableBondTest is RewardsBaseTest {
             stETH.getSharesByPooledEth(14 ether),
             1 wei,
             "claimable bond shares should be equal to the curve discount minus locked"
+        );
+    }
+
+    function test_WithMultiplier() public override {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 50 ether });
+        _multiplier({ multiplier: 15_000 });
+
+        uint256 claimableBondShares = accounting.getClaimableBondShares(0);
+
+        assertApproxEqAbs(
+            claimableBondShares,
+            stETH.getSharesByPooledEth(2 ether),
+            1 wei,
+            "claimable bond shares should be the excess over the scaled requirement"
         );
     }
 
@@ -675,6 +691,12 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 18 ether);
     }
 
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _multiplier({ multiplier: 15_000 });
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0), 48 ether);
+    }
+
     function test_WithOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 30 ether);
@@ -770,6 +792,13 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
     function test_WithLocked() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _lock({ amount: 1 ether });
+        (uint256 current, uint256 required) = accounting.getBondSummary(0);
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
+    }
+
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _multiplier({ multiplier: 15_000 });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
@@ -889,6 +918,109 @@ contract GetBondAmountByKeysCountWstETHTest is GetRequiredBondForKeysBaseTest {
     }
 }
 
+contract GetRequiredBondForNextKeysAtMultiplierTest is BaseTest {
+    function test_default() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0, MAX_BP), 32 ether);
+    }
+
+    function test_WithMultiplier() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0, 15_000), 48 ether);
+    }
+
+    function test_ScalesCurveButNotLocked() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, 1 ether);
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0, 15_000), 49 ether);
+    }
+
+    function test_SubtractsCurrentBond() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 16 ether });
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0, 15_000), 48 ether - accounting.getBond(0));
+    }
+
+    function test_RevertWhen_MultiplierBelowMaxBP() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectRevert(IBondCurve.InvalidMultiplier.selector);
+        accounting.getRequiredBondForNextKeys(0, 0, MAX_BP - 1);
+    }
+}
+
+contract GetRequiredBondForNextKeysAtMultiplierWstETHTest is BaseTest {
+    function test_default() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0, MAX_BP), wstETH.getWstETHByStETH(32 ether));
+    }
+
+    function test_WithMultiplier() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0, 15_000), wstETH.getWstETHByStETH(48 ether));
+    }
+
+    function test_SubtractsCurrentBond() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 16 ether });
+        assertEq(
+            accounting.getRequiredBondForNextKeysWstETH(0, 0, 15_000),
+            wstETH.getWstETHByStETH(48 ether - accounting.getBond(0))
+        );
+    }
+
+    function test_RevertWhen_MultiplierBelowMaxBP() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectRevert(IBondCurve.InvalidMultiplier.selector);
+        accounting.getRequiredBondForNextKeysWstETH(0, 0, MAX_BP - 1);
+    }
+}
+
+contract BondCurveMultiplierTest is BaseTest {
+    function test_default() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP);
+    }
+
+    function test_setBondCurveMultiplier() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectEmit(address(accounting));
+        emit IBondCurve.BondCurveMultiplierSet(0, 5_000, admin);
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP + 5_000);
+    }
+
+    function test_setBondCurveMultiplier_ResetsToDefault() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.startPrank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+        accounting.setBondCurveMultiplier(0, 0);
+        vm.stopPrank();
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP);
+    }
+
+    function test_setBondCurveMultiplier_UpdatesDepositInfo() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectCall(address(accounting.MODULE()), abi.encodeWithSelector(IBaseModule.updateDepositInfo.selector, 0));
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+
+    function test_setBondCurveMultiplier_RevertWhen_DoesNotHaveRole() public {
+        expectRoleRevert(stranger, accounting.SET_BOND_CURVE_MULTIPLIER_ROLE());
+        vm.prank(stranger);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+
+    function test_setBondCurveMultiplier_RevertWhen_OperatorDoesNotExist() public {
+        mock_getNodeOperatorsCount(0);
+        vm.expectRevert(IAccounting.NodeOperatorDoesNotExist.selector);
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+}
+
 // Combined bond summary and shares tests
 
 contract GetBondSummaryTest is BondStateBaseTest {
@@ -930,6 +1062,14 @@ contract GetBondSummaryTest is BondStateBaseTest {
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
         assertEq(current, 0 ether);
         assertEq(required, 18 ether);
+    }
+
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _multiplier({ multiplier: 15_000 });
+        (uint256 current, uint256 required) = accounting.getBondSummary(0);
+        assertEq(current, 0 ether);
+        assertEq(required, 48 ether);
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {
@@ -1036,6 +1176,14 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
         (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(18 ether));
+    }
+
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _multiplier({ multiplier: 15_000 });
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
+        assertEq(current, 0 ether);
+        assertEq(required, stETH.getSharesByPooledEth(48 ether));
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {
@@ -1178,6 +1326,22 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
             stETH.getSharesByPooledEth(14.1 ether),
             1 wei,
             "claimable bond shares should be equal to the curve discount + rewards - locked"
+        );
+    }
+
+    function test_WithMultiplier() public override {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 50 ether });
+        _rewards({ fee: 0.1 ether });
+        _multiplier({ multiplier: 15_000 });
+
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+
+        assertApproxEqAbs(
+            claimableBondShares,
+            stETH.getSharesByPooledEth(2.1 ether),
+            1 wei,
+            "claimable bond shares should be the excess over the scaled requirement + rewards"
         );
     }
 

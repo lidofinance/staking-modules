@@ -564,9 +564,39 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         module.compensateGeneralDelayedPenalty(0);
     }
 
-    function test_compensateGeneralDelayedPenalty_RevertWhen_NotManager() public {
-        uint256 noId = createNodeOperator();
+    function test_compensateGeneralDelayedPenalty_RewardAddressIsOwnerWithoutExtendedPermissions() public {
+        address manager = makeAddr("manager");
+        address reward = makeAddr("reward");
+        uint256 noId = createNodeOperator(manager, reward, false);
+
+        vm.prank(reward);
+        module.compensateGeneralDelayedPenalty(noId);
+    }
+
+    function test_compensateGeneralDelayedPenalty_ManagerIsOwnerWithExtendedPermissions() public {
+        address manager = makeAddr("manager");
+        address reward = makeAddr("reward");
+        uint256 noId = createNodeOperator(manager, reward, true);
+
+        vm.prank(manager);
+        module.compensateGeneralDelayedPenalty(noId);
+    }
+
+    function test_compensateGeneralDelayedPenalty_RevertWhen_ManagerIsNotOwner() public {
+        address manager = makeAddr("manager");
+        uint256 noId = createNodeOperator(manager, makeAddr("reward"), false);
+
         vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
+        vm.prank(manager);
+        module.compensateGeneralDelayedPenalty(noId);
+    }
+
+    function test_compensateGeneralDelayedPenalty_RevertWhen_RewardAddressIsNotOwner() public {
+        address reward = makeAddr("reward");
+        uint256 noId = createNodeOperator(makeAddr("manager"), reward, true);
+
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
+        vm.prank(reward);
         module.compensateGeneralDelayedPenalty(noId);
     }
 }
