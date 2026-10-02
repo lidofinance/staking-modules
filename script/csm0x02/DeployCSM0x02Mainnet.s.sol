@@ -49,7 +49,6 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config.setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module

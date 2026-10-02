@@ -669,7 +669,6 @@ contract DeploymentHelpers is Asserts {
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
         params.bondLockPeriod = decoded.bondLockPeriod;

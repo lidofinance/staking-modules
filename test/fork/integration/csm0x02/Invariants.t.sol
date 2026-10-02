@@ -34,8 +34,6 @@ contract CommunityInvariantsCSM0x02 is CommunityInvariantsBase, CSM0x02Integrati
     function test_accountingRoles() public view {
         _checkCommonAccountingRoles();
 
-        bytes32 setCurveRole = accounting.SET_BOND_CURVE_ROLE();
-        assertEq(accounting.getRoleMemberCount(setCurveRole), 1, "set bond curve");
-        assertTrue(accounting.hasRole(setCurveRole, deployParams.setResetBondCurveAddress), "set bond curve address");
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 0, "set bond curve");
     }
 }
