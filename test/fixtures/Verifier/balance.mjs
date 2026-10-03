@@ -1,4 +1,4 @@
-// Usage: node balance.mjs [balance_gwei]
+// Usage: node balance.mjs <fork> [balance_gwei]
 
 "use strict";
 
@@ -12,20 +12,23 @@ import { encodeParameters } from "web3-eth-abi";
 import VerifierBalanceProofTest from "../../../out/Verifier.t.sol/VerifierBalanceProofTest.json" assert { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
+const SLOTS_PER_HISTORICAL_ROOT = 8192;
 const MAX_VALIDATORS = 1_000;
-const Fork = ssz.electra;
 
 /**
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {bigint} opts.balanceGwei - The validator's balance in gwei.
+ * @param {string} opts.fork - Fork from the `ssz` library.
  * @param {number} opts.epoch - Epoch for the state slot.
  */
 function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
+  assert(["electra", "gloas"].includes(opts.fork));
 
   const faker = new Faker("seed sEed seEd");
+  const Fork = ssz[opts.fork];
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
   const Validator = Fork.BeaconState.getPathInfo(["validators", 0]).type;
@@ -44,33 +47,46 @@ function main(opts) {
   validator.exitEpoch = Number.MAX_SAFE_INTEGER;
   validator.withdrawableEpoch = Number.MAX_SAFE_INTEGER;
 
-  const state = Fork.BeaconState.defaultView();
-  state.slot = opts.epoch * SLOTS_PER_EPOCH;
+  const balanceState = Fork.BeaconState.defaultView();
+  balanceState.slot = opts.epoch * SLOTS_PER_EPOCH;
 
-  while (state.validators.length < MAX_VALIDATORS) {
-    state.validators.push(Validator.defaultView());
-  }
-  state.validators.set(opts.validatorIndex, validator);
+  balanceState.validators = balanceState.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
+  balanceState.validators.set(opts.validatorIndex, validator);
 
-  while (state.balances.length < MAX_VALIDATORS) {
-    state.balances.push(0);
-  }
-  state.balances.set(opts.validatorIndex, Number(opts.balanceGwei));
+  balanceState.balances = balanceState.balances.type.toView(new Array(MAX_VALIDATORS).fill(0));
+  balanceState.balances.set(opts.validatorIndex, Number(opts.balanceGwei));
 
-  const validatorProof = createProof(state.node, {
+  const validatorProof = createProof(balanceState.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+    gindex: balanceState.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
   });
 
-  const balanceProof = createProof(state.node, {
+  const balanceProof = createProof(balanceState.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["balances", opts.validatorIndex]).gindex,
+    gindex: balanceState.type.getPathInfo(["balances", opts.validatorIndex]).gindex,
+  });
+
+  const balanceBlock = Fork.BeaconBlock.defaultView();
+  balanceBlock.slot = balanceState.slot;
+  balanceBlock.parentRoot = faker.someBytes32();
+  balanceBlock.stateRoot = balanceState.hashTreeRoot();
+
+  const rootIndex = balanceBlock.slot % SLOTS_PER_HISTORICAL_ROOT;
+  const recentState = Fork.BeaconState.defaultView();
+  recentState.slot = balanceBlock.slot + 1;
+  recentState.blockRoots.set(rootIndex, balanceBlock.hashTreeRoot());
+
+  const blockRootsProof = createProof(recentState.node, {
+    type: ProofType.single,
+    gindex: recentState.type.getPathInfo(["blockRoots", rootIndex]).gindex,
   });
 
   const recentBlock = Fork.BeaconBlock.defaultView();
-  recentBlock.slot = state.slot;
+  recentBlock.slot = recentState.slot;
   recentBlock.parentRoot = faker.someBytes32();
-  recentBlock.stateRoot = state.hashTreeRoot();
+  recentBlock.stateRoot = recentState.hashTreeRoot();
 
   const fixture = {
     blockRoot: recentBlock.hashTreeRoot(),
@@ -84,6 +100,16 @@ function main(opts) {
           bodyRoot: recentBlock.body.hashTreeRoot(),
         },
         rootsTimestamp: 42,
+      },
+      balanceBlock: {
+        header: {
+          slot: balanceBlock.slot,
+          proposerIndex: balanceBlock.proposerIndex,
+          parentRoot: balanceBlock.parentRoot,
+          stateRoot: balanceBlock.stateRoot,
+          bodyRoot: balanceBlock.body.hashTreeRoot(),
+        },
+        proof: blockRootsProof.witnesses,
       },
       validator: {
         index: opts.validatorIndex,
@@ -143,6 +169,7 @@ class Faker {
 
 main({
   validatorIndex: 17,
-  balanceGwei: BigInt(process.argv[2] || "64000000000"), // default 64 ETH in gwei
+  balanceGwei: BigInt(process.argv[3] || "64000000000"), // default 64 ETH in gwei
+  fork: process.argv[2],
   epoch: 100_500,
 });

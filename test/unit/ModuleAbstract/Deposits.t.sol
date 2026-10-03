@@ -6,7 +6,6 @@ pragma solidity 0.8.33;
 import { Vm } from "forge-std/Test.sol";
 
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
