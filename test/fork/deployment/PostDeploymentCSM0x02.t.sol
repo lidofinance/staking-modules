@@ -80,8 +80,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
 
 contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 1);
-        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 0);
     }
 
     function test_bondCurves_scratch_onlyFull() public view {

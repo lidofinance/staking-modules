@@ -25,6 +25,7 @@ import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.so
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
+import { JsonBindings } from "../utils/JsonBindings.sol";
 import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
@@ -60,7 +61,6 @@ struct DeployCSM0x02Params {
     uint256 minBondLockPeriod;
     uint256 maxBondLockPeriod;
     uint256 bondLockPeriod;
-    address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
     bytes32 moduleType;
@@ -357,8 +357,6 @@ abstract contract DeployCSM0x02Base is Script {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
-
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
                 config.penaltiesManager
@@ -433,7 +431,7 @@ abstract contract DeployCSM0x02Base is Script {
             deployJson.set("VettedGateImpl", address(0));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("CircuitBreaker", circuitBreaker);
-            deployJson.set("DeployParams", abi.encode(config));
+            deployJson.str = JsonBindings.serialize(config, deployJson.ref, "DeployParams");
             deployJson.set("git-ref", gitRef);
             vm.writeJson(deployJson.str, _deployJsonFilename());
         }

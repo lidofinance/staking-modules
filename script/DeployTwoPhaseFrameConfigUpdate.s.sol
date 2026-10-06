@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Script } from "forge-std/Script.sol";
 import { TwoPhaseFrameConfigUpdate } from "../src/utils/TwoPhaseFrameConfigUpdate.sol";
 import { JsonObj, Json } from "./utils/Json.sol";
+import { JsonBindings } from "./utils/JsonBindings.sol";
 
 struct TwoPhaseFrameConfigUpdateParams {
     uint256 reportsToProcessBeforeOffsetPhase;
@@ -83,7 +84,7 @@ abstract contract DeployTwoPhaseFrameConfigUpdateBase is Script {
         JsonObj memory deployJson = Json.newObj("artifact");
 
         deployJson.set("TwoPhaseFrameConfigUpdate", deployed);
-        deployJson.set("TwoPhaseFrameConfigUpdateParams", abi.encode(config));
+        deployJson.str = JsonBindings.serialize(config, deployJson.ref, "TwoPhaseFrameConfigUpdateParams");
         deployJson.set("git-ref", gitRef);
 
         vm.createDir(artifactDir, true);

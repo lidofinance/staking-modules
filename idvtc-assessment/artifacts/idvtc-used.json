@@ -27,12 +27,30 @@
     ]
   },
   {
+    "main_address": "0xa8316e49801ab01d195ebc920d498df1733fd740",
+    "addresses": [
+      "0x0ab153f699d8958cada9437a94cd53b834807c6a",
+      "0x1daef601e5ce256bc533fb420e87e99993b9092b",
+      "0x307d792d792d6251dc7c1eddb738626956790d02",
+      "0xf6dc93c168482ae5a3058b88d71e903ab3dd4e03"
+    ]
+  },
+  {
     "main_address": "0xac2bdb872655572f616879eb32e5fb81f336974c",
     "addresses": [
       "0x5a6723b2afb22d067f80f07073aebd16e9c41983",
       "0xac2bdb872655572f616879eb32e5fb81f336974c",
       "0xac7bfc772dca04bc26c8ac7419a393a9dc3a53a3",
       "0xf3a84d9c18e1fdb913157219d41bef631b486e82"
+    ]
+  },
+  {
+    "main_address": "0xdae43a4ea335f928263b3efd49752f52ef1e9907",
+    "addresses": [
+      "0x078b0b48afca88a54aff387da0b4647f0207f93b",
+      "0x66471666ad5474c14ed35f1d8545d11b27e16dd2",
+      "0x8a1b73a88e1854dd3eebee4354bd4dba23861e3a",
+      "0xc8cb74385167f04141c8cf49899e16502267c03d"
     ]
   }
 ]

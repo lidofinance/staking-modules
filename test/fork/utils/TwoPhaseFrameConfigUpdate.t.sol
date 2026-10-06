@@ -7,6 +7,8 @@ import { Test } from "forge-std/Test.sol";
 import { Bytes } from "@openzeppelin/contracts/utils/Bytes.sol";
 
 import { TwoPhaseFrameConfigUpdate } from "src/utils/TwoPhaseFrameConfigUpdate.sol";
+import { TwoPhaseFrameConfigUpdateParams } from "script/DeployTwoPhaseFrameConfigUpdate.s.sol";
+import { JsonBindings } from "script/utils/JsonBindings.sol";
 import { IFeeOracle } from "src/interfaces/IFeeOracle.sol";
 
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -36,13 +38,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             address deployed = vm.parseJsonAddress(utilsConfig, ".TwoPhaseFrameConfigUpdate");
             assertTrue(deployed.code.length > 0, "TwoPhaseFrameConfigUpdate not deployed on fork");
 
-            bytes memory encodedParams = vm.parseJsonBytes(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
-            (
-                reportsToProcessBeforeOffsetPhase,
-                reportsToProcessBeforeRestorePhase,
-                offsetPhaseEpochsPerFrame,
-                restorePhaseFastLaneLengthSlots
-            ) = abi.decode(encodedParams, (uint256, uint256, uint256, uint256));
+            TwoPhaseFrameConfigUpdateParams memory params = _parseParams(utilsConfig);
+            reportsToProcessBeforeOffsetPhase = params.reportsToProcessBeforeOffsetPhase;
+            reportsToProcessBeforeRestorePhase = params.reportsToProcessBeforeRestorePhase;
+            offsetPhaseEpochsPerFrame = params.offsetPhaseEpochsPerFrame;
+            restorePhaseFastLaneLengthSlots = params.restorePhaseFastLaneLengthSlots;
 
             updater = TwoPhaseFrameConfigUpdate(deployed);
             assertEq(address(updater.ORACLE()), address(oracle), "Utility oracle mismatch");
@@ -107,18 +107,20 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         oracle.renounceRole(submitRole, address(this));
     }
 
+    function _parseParams(string memory utilsConfig) internal view returns (TwoPhaseFrameConfigUpdateParams memory) {
+        return JsonBindings.deserializeTwoPhaseFrameConfigUpdateParams(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
+    }
+
     function test_deployParams() public {
         Env memory env = envVars();
         vm.skip(_isEmpty(env.UTILS_DEPLOY_CONFIG), "UTILS_DEPLOY_CONFIG is not set");
 
         string memory utilsConfig = vm.readFile(env.UTILS_DEPLOY_CONFIG);
-        bytes memory encodedParams = vm.parseJsonBytes(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
-        (
-            uint256 reportsToProcessBeforeOffsetPhaseFromConfig,
-            uint256 reportsToProcessBeforeRestorePhaseFromConfig,
-            uint256 offsetPhaseEpochsPerFrameFromConfig,
-            uint256 restorePhaseFastLaneLengthSlotsFromConfig
-        ) = abi.decode(encodedParams, (uint256, uint256, uint256, uint256));
+        TwoPhaseFrameConfigUpdateParams memory params = _parseParams(utilsConfig);
+        uint256 reportsToProcessBeforeOffsetPhaseFromConfig = params.reportsToProcessBeforeOffsetPhase;
+        uint256 reportsToProcessBeforeRestorePhaseFromConfig = params.reportsToProcessBeforeRestorePhase;
+        uint256 offsetPhaseEpochsPerFrameFromConfig = params.offsetPhaseEpochsPerFrame;
+        uint256 restorePhaseFastLaneLengthSlotsFromConfig = params.restorePhaseFastLaneLengthSlots;
 
         {
             uint256 slotsPerEpoch = updater.SLOTS_PER_EPOCH();

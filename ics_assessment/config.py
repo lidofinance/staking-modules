@@ -6,27 +6,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Campaign cutoffs and windows.
-MAINNET_CUTOFF_BLOCK = 25276145
-HOODI_CUTOFF_BLOCK = 2979806
-ARBITRUM_CUTOFF_BLOCK = 471507665
-GNOSIS_CUTOFF_BLOCK = 46599171
+MAINNET_CUTOFF_BLOCK = 25928919
+HOODI_CUTOFF_BLOCK = 3579733
+ARBITRUM_CUTOFF_BLOCK = 502842956
+GNOSIS_CUTOFF_BLOCK = 48135713
 
-SNAPSHOT_VOTE_TIMESTAMP = 1780956000
+SNAPSHOT_VOTE_TIMESTAMP = 1788825599
+HUMAN_PASSPORT_CUTOFF_DATE = "2026-09-07T23:59:59Z"
 
 HIGH_SIGNAL_START_DATE = datetime(2025, 9, 1)
-HIGH_SIGNAL_END_DATE = datetime(2026, 6, 9)
+HIGH_SIGNAL_END_DATE = datetime(2026, 9, 7)
 
 REQUIRED_PERFORMANCE_WINDOW_HOODI = 53
-REQUIRED_ACTIVITY_WINDOW_MAINNET = 30
+REQUIRED_ACTIVITY_WINDOW_MAINNET = 28
 
 
 # Network endpoints.
 MAINNET_RPC_URL = os.getenv("MAINNET_RPC_URL")
 HOODI_RPC_URL = os.getenv("HOODI_RPC_URL")
 ARBITRUM_RPC_URL = os.getenv("ARBITRUM_RPC_URL")
-MAINNET_ARCHIVE_RPC_URL = os.getenv("MAINNET_ARCHIVE_RPC_URL", MAINNET_RPC_URL or "")
-HOODI_ARCHIVE_RPC_URL = os.getenv("HOODI_ARCHIVE_RPC_URL", HOODI_RPC_URL or "")
-GNOSIS_RPC_URL = "https://rpc.gnosis.gateway.fm"
+MAINNET_ARCHIVE_RPC_URL = os.getenv("MAINNET_ARCHIVE_RPC_URL") or MAINNET_RPC_URL or ""
+HOODI_ARCHIVE_RPC_URL = os.getenv("HOODI_ARCHIVE_RPC_URL") or HOODI_RPC_URL or ""
+GNOSIS_RPC_URL = os.getenv("GNOSIS_RPC_URL") or "https://rpc.gnosis.gateway.fm"
+IPFS_GATEWAY_URL = (
+    os.getenv("IPFS_GATEWAY_URL") or "https://gateway.pinata.cloud/ipfs"
+).rstrip("/")
 
 
 # Category scoring policy.
@@ -85,7 +89,6 @@ REQUIRED_SNAPSHOT_VP = 100
 GALXE_API_URL = "https://graphigo.prd.galaxy.eco/query"
 GALXE_SPACE_ID = 22849
 
-GITPOAP_API_URL = "https://public-api.gitpoap.io/v1"
 SSV_OPERATORS_API_URL = (
     "https://api.ssv.network/api/v4/mainnet/operators"
     "?type=verified_operator&page=1&perPage=1000"
@@ -96,7 +99,7 @@ PROTOCOL_GUILD_FROM_BLOCK = 19620007
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 HUMAN_PASSPORT_SCORER_ID = 11737
-HUMAN_PASSPORT_API_URL = "https://api.passport.xyz/v2/stamps/{scorer_id}/score/{address}"
+HUMAN_PASSPORT_API_URL = "https://api.passport.xyz/v2/stamps/{scorer_id}/score/{address}/history"
 
 GROUP_ADDRESS = "0xcfcea7904f42fd10e32703a57922e8d2036e3231"
 GROUP_CREATION_BLOCK = 41502657
@@ -131,7 +134,6 @@ ARAGON_VOTERS_PATH = ENGAGEMENT_DATA_DIR / "aragon_voters.csv"
 SNAPSHOT_VOTERS_PATH = ENGAGEMENT_DATA_DIR / "snapshot_voters.csv"
 GALXE_LOYALTY_POINTS_PATH = ENGAGEMENT_DATA_DIR / "galxe_loyalty_points.csv"
 GITPOAP_HOLDERS_PATH = ENGAGEMENT_DATA_DIR / "gitpoap_holders.csv"
-GITPOAP_EVENTS_PATH = ENGAGEMENT_DATA_DIR / "gitpoap_events.csv"
 PROTOCOL_GUILD_PATH = ENGAGEMENT_DATA_DIR / "protocol_guild.csv"
 
 NODE_OPERATOR_OWNERS_MAINNET_PATH = EXPERIENCE_DATA_DIR / "node_operator_owners_mainnet.json"
