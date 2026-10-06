@@ -12,8 +12,6 @@ library SSZ {
     error InvalidProof();
 
     function hashTreeRoot(BeaconBlockHeader memory header) internal view returns (bytes32 root) {
-        root = bytes32(0);
-
         bytes32[8] memory nodes = [
             toLittleEndian(header.slot.unwrap()),
             toLittleEndian(header.proposerIndex),
@@ -25,46 +23,10 @@ library SSZ {
             bytes32(0)
         ];
 
-        assembly ("memory-safe") {
-            // Count of nodes to hash
-            let count := 8
-
-            // Loop over levels
-            for {
-
-            } iszero(eq(count, 1)) {
-                count := shr(1, count)
-            } {
-                // Loop over nodes at the given depth
-                for {
-                    let target := nodes
-                    let source := nodes
-
-                    let end := add(source, shl(5, count)) // end = source + count * 32
-                } lt(source, end) {
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-                } {
-                    // Join next two nodes to hash
-                    mcopy(0x00, source, 0x40)
-
-                    // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
-                    // and all gas is forwarded, so OOG here means OOG for the caller.
-                    pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
-
-                    // Store the resulting hash at the target location
-                    mstore(target, mload(0x00))
-                }
-            }
-
-            root := mload(0x00)
-        }
+        root = _merkleize8(nodes);
     }
 
     function hashTreeRoot(Validator memory validator) internal view returns (bytes32 root) {
-        root = bytes32(0);
-
         bytes32 pubkeyRoot;
         assembly ("memory-safe") {
             // Dynamic data types such as bytes are stored at the specified offset.
@@ -91,45 +53,32 @@ library SSZ {
             toLittleEndian(validator.withdrawableEpoch)
         ];
 
+        root = _merkleize8(nodes);
+    }
+
+    function _merkleize8(bytes32[8] memory nodes) private view returns (bytes32 root) {
         assembly ("memory-safe") {
-            // Count of nodes to hash
-            let count := 8
+            // Return codes are unchecked: sha256 can only fail with OOG, and all gas is forwarded.
+            // Hash the eight leaves into four nodes, overwriting leaves that are no longer needed.
+            pop(staticcall(gas(), 0x02, nodes, 0x40, nodes, 0x20))
+            pop(staticcall(gas(), 0x02, add(nodes, 0x40), 0x40, add(nodes, 0x20), 0x20))
+            pop(staticcall(gas(), 0x02, add(nodes, 0x80), 0x40, add(nodes, 0x40), 0x20))
+            pop(staticcall(gas(), 0x02, add(nodes, 0xc0), 0x40, add(nodes, 0x60), 0x20))
 
-            // Loop over levels
-            // prettier-ignore
-            for {} iszero(eq(count, 1)) { count := shr(1, count) } {
-                // Loop over nodes at the given depth
+            // Hash the four intermediate nodes into two nodes.
+            pop(staticcall(gas(), 0x02, nodes, 0x40, nodes, 0x20))
+            pop(staticcall(gas(), 0x02, add(nodes, 0x40), 0x40, add(nodes, 0x20), 0x20))
 
-                for {
-                    let target := nodes
-                    let source := nodes
-
-                    let end := add(source, shl(5, count)) // end = source + count * 32
-                } lt(source, end) {
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-                } {
-                    // Join next two nodes to hash
-                    mcopy(0x00, source, 0x40)
-
-                    // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
-                    // and all gas is forwarded, so OOG here means OOG for the caller.
-                    pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
-
-                    // Store the resulting hash at the target location
-                    mstore(target, mload(0x00))
-                }
-            }
-
-            root := mload(0x00)
+            // Hash the final pair and return the root.
+            pop(staticcall(gas(), 0x02, nodes, 0x40, nodes, 0x20))
+            root := mload(nodes)
         }
     }
 
     /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
     /// @dev Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
     function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) internal view {
-        uint256 index = gI.index();
+        uint256 index = gI.unwrap();
 
         assembly ("memory-safe") {
             // Check if `proof` is empty.

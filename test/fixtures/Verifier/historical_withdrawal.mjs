@@ -31,13 +31,13 @@ function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
   assert(opts.withdrawalOffset < MAX_WITHDRAWALS);
-  assert(["deneb", "electra"].includes(opts.fork));
+  assert(["electra", "gloas"].includes(opts.fork));
   assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
   const faker = new Faker("seed sEed seEd");
 
-  const LatestFork = ssz.fulu;
-  /** @type {ssz.deneb | ssz.electra} */
+  const LatestFork = ssz.gloas;
+  /** @type {ssz.electra | ssz.gloas} */
   const WentByFork = ssz[opts.fork];
 
   const withdrawalState = WentByFork.BeaconState.defaultView();
@@ -59,21 +59,15 @@ function main(opts) {
     ...hexStrToBytesArr(opts.address),
   ]);
 
-  while (withdrawalState.validators.length < MAX_VALIDATORS) {
-    withdrawalState.validators.push(Validator.defaultView());
-  }
+  withdrawalState.validators = withdrawalState.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
   withdrawalState.validators.set(opts.validatorIndex, validator);
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
-  const Withdrawal = WentByFork.BeaconBlock.getPathInfo([
-    "body",
-    "executionPayload",
-    "withdrawals",
-    0,
-  ]).type;
+  const Withdrawal = WentByFork.Withdrawals.elementType;
 
-  /** @type {import('@chainsafe/ssz').CompositeView} */
-  const withdrawal = Withdrawal.defaultView();
+  const withdrawal = Withdrawal.defaultValue();
 
   withdrawal.index = 42;
   withdrawal.validatorIndex = opts.validatorIndex;
@@ -81,14 +75,23 @@ function main(opts) {
   withdrawal.amount = BigInt(opts.amount);
 
   const withdrawalBlock = WentByFork.BeaconBlock.defaultView();
+  const withdrawalValues = Array.from({ length: MAX_WITHDRAWALS }, () => Withdrawal.defaultValue());
+  withdrawalValues[opts.withdrawalOffset] = withdrawal;
+  const withdrawals = WentByFork.Withdrawals.toView(withdrawalValues);
 
-  while (withdrawalBlock.body.executionPayload.withdrawals.length < MAX_WITHDRAWALS) {
-    withdrawalBlock.body.executionPayload.withdrawals.push(Withdrawal.defaultView());
+  let pathFromStateToWithdrawals;
+  if (opts.fork === "gloas") {
+    withdrawalState.payloadExpectedWithdrawals = withdrawals;
+    pathFromStateToWithdrawals = withdrawalState.type.getPathInfo(["payloadExpectedWithdrawals"]);
+  } else {
+    withdrawalBlock.body.executionPayload.withdrawals = withdrawals;
+    withdrawalState.latestExecutionPayloadHeader.withdrawalsRoot = withdrawals.hashTreeRoot();
+    pathFromStateToWithdrawals = withdrawalState.type.getPathInfo([
+      "latestExecutionPayloadHeader",
+      "withdrawalsRoot",
+    ]);
+    withdrawalState.tree.setNode(pathFromStateToWithdrawals.gindex, withdrawals.node);
   }
-  withdrawalBlock.body.executionPayload.withdrawals.set(opts.withdrawalOffset, withdrawal);
-
-  withdrawalState.latestExecutionPayloadHeader.withdrawalsRoot =
-    withdrawalBlock.body.executionPayload.withdrawals.hashTreeRoot();
 
   withdrawalBlock.slot = withdrawalState.slot;
   withdrawalBlock.stateRoot = withdrawalState.hashTreeRoot();
@@ -105,13 +108,6 @@ function main(opts) {
     type: ProofType.single,
     gindex: withdrawalState.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
   });
-
-  const pathFromStateToWithdrawals = withdrawalState.type.getPathInfo([
-    "latestExecutionPayloadHeader",
-    "withdrawalsRoot",
-  ]);
-  const withdrawals = withdrawalBlock.body.executionPayload.withdrawals;
-  withdrawalState.tree.setNode(pathFromStateToWithdrawals.gindex, withdrawals.node);
 
   const withdrawalProof = createProof(withdrawalState.node, {
     type: ProofType.single,
