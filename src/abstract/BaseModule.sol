@@ -631,13 +631,6 @@ abstract contract BaseModule is
 
     function _reportWithdrawnValidator(WithdrawnValidatorInfo memory info, bool slashed) internal {
         WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis = _getWithdrawalPenaltyBasis(info);
-        if (slashed) {
-            // The slashing penalty accounts for all the losses, so the balance shortage is not charged on top of it.
-            penaltyBasis.penaltyAmount = WithdrawnValidatorLib._scalePenaltyByMultiplier(
-                PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(info.nodeOperatorId)),
-                penaltyBasis.penaltyMultiplier
-            );
-        }
 
         uint256 trackedBalanceDecrease = WithdrawnValidatorLib.processValidator({
             penaltyBasis: penaltyBasis,
@@ -655,8 +648,8 @@ abstract contract BaseModule is
         _incrementModuleNonce();
     }
 
-    /// @dev Returns the module-specific multiplier and regular withdrawal penalty.
-    ///      The automatic slashing flow replaces the penalty amount with the scaled slashing penalty.
+    /// @dev Returns the module-specific multiplier and balance shortage for regular withdrawals.
+    ///      The withdrawal library ignores the shortage in the automatic slashing flow.
     function _getWithdrawalPenaltyBasis(
         WithdrawnValidatorInfo memory info
     ) internal view virtual returns (WithdrawnValidatorLib.PenaltyBasis memory penaltyBasis);

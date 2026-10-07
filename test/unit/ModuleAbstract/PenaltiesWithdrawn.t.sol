@@ -86,7 +86,7 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
                 legacyElWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
-        // Both penalties use the whole-ETH multiplier of 42; the ready slashing penalty is not scaled again.
+        // Both penalties are scaled independently using the whole-ETH multiplier of 42.
         uint256 slashingPenalty = 3.9375 ether;
         uint256 totalPenalty = slashingPenalty + 0.013125 ether;
         uint256 nonce = module.getNonce();
@@ -136,6 +136,47 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         assertTrue(module.isValidatorWithdrawn(noId, 0));
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportValidatorSlashing_scalesPenaltiesSeparately() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        _reportValidatorBalance(noId, 0, 50 ether, 1);
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 1 wei);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(1 wei, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        // Each penalty rounds down to 1 wei; scaling their sum would charge 3 wei instead.
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 2 wei), 1);
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
+
+    function test_reportValidatorSlashing_zeroPenaltyKeepsStrikes() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        _reportValidatorBalance(noId, 0, 64 ether, 1);
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 0);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.01 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 0.02 ether), 1);
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
     }
 
     function test_isValidatorSlashed_DefaultFalse() public assertInvariants {

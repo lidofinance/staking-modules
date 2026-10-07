@@ -2248,6 +2248,22 @@ contract CSMReportWithdrawnValidatorWithConfirmedBalance is CSMCommon {
             "the confirmed balance scales the slashing penalty"
         );
     }
+
+    function test_reportValidatorSlashing_zeroPenaltyIgnoresBalanceShortage() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        // The generated slashing report uses 32 ETH of allocated balance, below the 42 ETH confirmed balance.
+        setKeyConfirmedBalance(noId, 0, 10 ether);
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), 0);
+        uint256 bondBefore = accounting.getBond(noId);
+
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertEq(accounting.getBond(noId), bondBefore);
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
 }
 
 contract CSMGetKeyAllocatedBalances is ModuleGetKeyAllocatedBalances, CSMCommon {

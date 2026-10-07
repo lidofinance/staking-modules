@@ -311,7 +311,7 @@ contract CSModule is ICSModule, BaseModule {
 
         uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
         uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + _baseStorage().keyConfirmedBalance[pointer];
-        if (info.exitBalance < balance) penaltyBasis.penaltyAmount = balance - info.exitBalance;
+        if (info.exitBalance < balance) penaltyBasis.balanceShortage = balance - info.exitBalance;
 
         penaltyBasis.penaltyMultiplier = WithdrawnValidatorLib._getPenaltyMultiplier(
             Math.min(Math.max(info.exitBalance, balance), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
