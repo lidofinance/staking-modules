@@ -111,7 +111,7 @@ interface IMetaRegistry {
     /// @notice Returns the initialized version of the contract.
     function getInitializedVersion() external view returns (uint64);
 
-    /// @notice Set or update metadata for a Node Operator (callable by SET_OPERATOR_INFO_ROLE).
+    /// @notice Set or update metadata for a Node Operator.
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param metadata Metadata payload to persist.
     function setOperatorMetadataAsAdmin(uint256 nodeOperatorId, OperatorMetadata calldata metadata) external;
@@ -120,7 +120,6 @@ interface IMetaRegistry {
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param name Display name.
     /// @param description Long description.
-    /// @dev Reverts if module does not support IBaseModule interface.
     function setOperatorMetadataAsOwner(
         uint256 nodeOperatorId,
         string calldata name,
@@ -162,32 +161,20 @@ interface IMetaRegistry {
     /// @return weight Base allocation weight.
     function getBondCurveWeight(uint256 curveId) external view returns (uint256 weight);
 
-    /// @notice Set base weight for the bond curve ID (callable by SET_BOND_CURVE_WEIGHT_ROLE).
-    /// @dev Effective weights for operators using the curve will not be updated automatically.
-    ///      refreshOperatorWeight() must be called for the affected operators to update their effective weights.
-    ///      Reverts with `InvalidBondCurveWeight` unless the weight is zero or within [MAX_BP, MAX_BOND_CURVE_WEIGHT].
+    /// @notice Set base weight for the bond curve ID.
+    /// @dev Requests a full deposit info update that refreshes cached weights. Deposits are blocked until it completes.
     /// @param curveId Bond curve ID.
     /// @param weight Base allocation weight.
     function setBondCurveWeight(uint256 curveId, uint256 weight) external;
 
-    /// @notice Add a weight boost provider (callable by DEFAULT_ADMIN_ROLE).
-    /// @dev Adding a provider is expected to be a rare operation and does not refresh cached weights automatically.
-    ///      A full deposit info update is requested; it refreshes every operator's cached weight, and deposits
-    ///      are blocked until it completes.
-    ///      Reverts once MAX_WEIGHT_BOOST_PROVIDERS providers are registered; removing a provider frees its slot.
-    ///      Reverts with `InvalidWeightBoostProvider` for the zero address and `WeightBoostProviderAlreadyAdded`
-    ///      for a registered provider.
+    /// @notice Add a weight boost provider.
+    /// @dev Requests a full deposit info update that refreshes cached weights. Deposits are blocked until it completes.
     /// @param provider Boost provider consumed during weight calculation.
     /// @param mode Provider aggregation mode.
     function addWeightBoostProvider(address provider, WeightBoostProviderMode mode) external;
 
-    /// @notice Remove a weight boost provider (callable by DEFAULT_ADMIN_ROLE).
-    /// @dev Removing a provider does not refresh cached weights automatically.
-    ///      A full deposit info update is requested; it refreshes every operator's cached weight, and deposits
-    ///      are blocked until it completes.
-    ///      The last provider takes the removed provider's position in `getWeightBoostProviders()`.
-    ///      A removed provider can be added again.
-    ///      Reverts with `WeightBoostProviderNotFound` for an unregistered provider.
+    /// @notice Remove a weight boost provider.
+    /// @dev Requests a full deposit info update that refreshes cached weights. Deposits are blocked until it completes.
     /// @param provider Boost provider to remove.
     function removeWeightBoostProvider(address provider) external;
 
@@ -224,19 +211,16 @@ interface IMetaRegistry {
 
     /// @notice Trigger the group weight update routine in the registry.
     /// @param groupId Operator group ID to trigger the update for.
-    /// @dev Use this after asynchronous provider configuration changes such as addWeightBoostProvider(),
-    ///      notifyWeightBoostProviderConfigChanged(), and removeWeightBoostProvider().
     function refreshGroupWeights(uint256 groupId) external;
 
     /// @notice Notify the registry that a configured provider changed a Node Operator boost.
-    /// @dev No-op for callers that are not registered providers (including removed ones) and for
+    /// @dev No-op for callers that are not registered providers and for
     ///      operators outside any group. A `PerNodeOperator` provider refreshes only the operator's
     ///      cached weight; a `MaxPerGroup` provider refreshes the whole group.
     /// @param nodeOperatorId ID of the Node Operator whose provider boost changed.
     function notifyWeightBoostChanged(uint256 nodeOperatorId) external;
 
     /// @notice Notify the registry that a configured provider changed global boost parameters.
-    /// @dev Requests a full deposit info update when the sender is a registered provider; other callers
-    ///      (including removed providers) are ignored: removal already requests a full update.
+    /// @dev Requests a full deposit info update when the sender is a registered provider; no-op otherwise.
     function notifyWeightBoostProviderConfigChanged() external;
 }
