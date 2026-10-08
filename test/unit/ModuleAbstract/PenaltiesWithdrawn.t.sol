@@ -26,6 +26,8 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         emit IBaseModule.ValidatorSlashingReported(noId, keyIndex, pubkey);
         vm.expectEmit(address(module));
         emit IBaseModule.SlashingSettleDeadlineChanged(noId, deadline);
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, pubkey);
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
         module.reportValidatorSlashing(noId, keyIndex, timeToWithdrawable);
 
@@ -33,6 +35,32 @@ abstract contract ModuleReportValidatorSlashing is ModuleFixtures {
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(module.getSlashingSettleDeadline(noId), deadline);
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
+
+    function test_reportRegularWithdrawnValidator_updatesDepositabilityAfterPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator(3);
+        module.obtainDepositData(2, "");
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(5 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        module.reportRegularWithdrawnValidator(
+            WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: 0,
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
+            })
+        );
+
+        assertEq(accounting.getBond(noId), 1 ether);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        (, , uint256 depositable) = module.getStakingModuleSummary();
+        assertEq(depositable, 0);
     }
 
     function test_reportValidatorSlashing_penaltyFromTheCurve() public assertInvariants {
