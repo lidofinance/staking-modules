@@ -107,7 +107,7 @@ contract InvariantAsserts is Test {
 
             if (assertZeroConfirmedBalances) {
                 for (uint256 i; i < no.totalDepositedKeys; ++i) {
-                    uint256[] memory balances = csm.getKeyConfirmedBalances(noId, i, 1);
+                    uint256[] memory balances = ICSModule(address(csm)).getKeyConfirmedBalances(noId, i, 1);
                     assertEq(balances[0], 0, "assert key confirmed balance == 0");
                 }
             }

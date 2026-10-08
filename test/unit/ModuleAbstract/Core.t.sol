@@ -194,6 +194,12 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
+    function _getWithdrawalPenaltyBasis(
+        WithdrawnValidatorInfo memory
+    ) internal pure override returns (WithdrawnValidatorLib.PenaltyBasis memory) {
+        revert NotImplementedInTest();
+    }
+
     function _applyDepositableValidatorsCount(
         NodeOperator storage no,
         uint256 nodeOperatorId,
@@ -353,7 +359,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.reportValidatorSlashing(noId, 0, 0);
     }
 
-    function test_reportRegularWithdrawnValidatorsRole() public {
+    function test_reportRegularWithdrawnValidatorRole() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
 
@@ -363,33 +369,29 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.obtainDepositData(1, "");
         vm.stopPrank();
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         vm.prank(actor);
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(validatorInfos);
     }
 
-    function test_reportRegularWithdrawnValidatorsRole_revert() public {
+    function test_reportRegularWithdrawnValidatorRole_revert() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
-            slashingPenalty: 0
+            exitBalance: 1 ether
         });
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(validatorInfos);
     }
 
     function test_recovererRole() public {

@@ -16,6 +16,8 @@ import { SSZ } from "src/lib/SSZ.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 
 import { GIndices } from "script/constants/GIndices.sol";
 
@@ -396,17 +398,15 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -497,7 +497,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -505,17 +505,15 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(3 ether))
         );
 
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -531,7 +529,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -539,17 +537,15 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(2016 ether))
         );
 
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory withdrawals = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9
         });
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -567,7 +563,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -587,7 +583,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -697,7 +693,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalances.selector,
+                ICSModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex,
                 1
@@ -705,7 +701,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(UintArr(0))
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidator.selector), "");
     }
 
     function _loadFixture() internal {
@@ -1669,7 +1665,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
 
     Fixture internal fixture;
 
-    function setUp() public {
+    function setUp() public virtual {
         _loadFixture();
 
         module = new Stub();
@@ -1709,9 +1705,25 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     }
 
     function test_processBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        // The fixture contains 64 ETH; only the Curated checkpoint report carries the proven state slot.
+        bytes memory report = _isCurated()
+            ? abi.encodeWithSelector(
+                ICuratedModule.syncValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether,
+                fixture.data.recentBlock.header.slot.unwrap(),
+                false
+            )
+            : abi.encodeWithSelector(
+                ICSModule.reportValidatorBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex,
+                64 ether
+            );
+        vm.expectCall(address(module), report);
 
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_SlotUnsupported() public {
@@ -1720,7 +1732,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         vm.expectRevert(
             abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_InvalidBlockHeader() public {
@@ -1731,14 +1743,14 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         );
 
         vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_InvalidBalanceNode() public {
         fixture.data.balance.node = someBytes32();
 
         vm.expectRevert(SSZ.InvalidProof.selector);
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_InvalidPublicKey() public {
@@ -1753,14 +1765,14 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         );
 
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
         fixture.data.validator.object.withdrawableEpoch = uint64(fixture.data.recentBlock.header.slot.unwrap() / 32);
 
         vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function test_processBalanceProof_RevertWhen_Paused() public {
@@ -1768,7 +1780,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         verifier.pauseFor(1 days);
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processBalanceProof(fixture.data);
+        _processBalanceProof();
     }
 
     function _setMocks() internal {
@@ -1788,7 +1800,19 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
+        bytes4 selector = _isCurated()
+            ? ICuratedModule.syncValidatorBalance.selector
+            : ICSModule.reportValidatorBalance.selector;
+        vm.mockCall(address(module), abi.encodeWithSelector(selector), "");
+    }
+
+    function _processBalanceProof() internal {
+        if (_isCurated()) verifier.processBalanceProofForCurated(fixture.data);
+        else verifier.processBalanceProof(fixture.data);
+    }
+
+    function _isCurated() internal pure virtual returns (bool) {
+        return false;
     }
 
     function _loadFixture() internal {
@@ -1801,6 +1825,12 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     }
 
     function ffi_interface(Fixture memory) external {}
+}
+
+contract VerifierCuratedBalanceProofTest is VerifierBalanceProofTest {
+    function _isCurated() internal pure override returns (bool) {
+        return true;
+    }
 }
 
 contract VerifierParentBlockRootTest is Test, Utilities {
