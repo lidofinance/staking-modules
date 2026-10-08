@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBondCurve } from "./interfaces/IBondCurve.sol";
@@ -51,7 +50,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
         uint256 groupsCount;
         WeightBoostProviderEntry[] weightBoostProviders;
-        mapping(address provider => uint256 providerId) weightBoostProviderIdByAddress;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
@@ -63,6 +61,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     uint256 public constant NO_GROUP_ID = 0;
 
     uint256 public constant MAX_WEIGHT_BOOST_PROVIDERS = 10;
+
+    uint256 public constant MAX_BOND_CURVE_WEIGHT = 100 * MAX_BP;
 
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
@@ -144,7 +144,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
         if (curveId >= ACCOUNTING.getCurvesCount()) revert IBondCurve.InvalidBondCurveId();
-        if (weight != 0 && weight < MAX_BP) revert InvalidBondCurveWeight();
+        if (weight != 0 && (weight < MAX_BP || weight > MAX_BOND_CURVE_WEIGHT)) revert InvalidBondCurveWeight();
         if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
         $.bondCurveWeight[curveId] = weight;
@@ -154,32 +154,31 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function addWeightBoostProvider(
-        IWeightBoostProvider provider,
+        address provider,
         WeightBoostProviderMode mode
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        address providerAddr = address(provider);
-        if (providerAddr == address(0)) revert InvalidWeightBoostProvider();
+        if (provider == address(0)) revert InvalidWeightBoostProvider();
 
         MetaRegistryStorage storage $ = _storage();
-        if ($.weightBoostProviderIdByAddress[providerAddr] != 0) {
+        if (_providerIdx(provider) != 0) {
             revert WeightBoostProviderAlreadyAdded();
         }
         if ($.weightBoostProviders.length >= MAX_WEIGHT_BOOST_PROVIDERS) revert TooManyWeightBoostProviders();
 
-        $.weightBoostProviders.push(WeightBoostProviderEntry({ provider: provider, mode: mode, enabled: true }));
-        $.weightBoostProviderIdByAddress[providerAddr] = $.weightBoostProviders.length;
-        emit WeightBoostProviderAdded(providerAddr, mode);
+        $.weightBoostProviders.push(WeightBoostProviderEntry({ provider: IWeightBoostProvider(provider), mode: mode }));
+        emit WeightBoostProviderAdded(provider, mode);
         _requestFullDepositInfoUpdate();
     }
 
     /// @inheritdoc IMetaRegistry
-    function setWeightBoostProviderEnabled(uint256 providerId, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        WeightBoostProviderEntry storage entry = _getWeightBoostProviderEntry(providerId);
-        address providerAddr = address(entry.provider);
-        if (entry.enabled == enabled) revert SameWeightBoostProviderEnabled();
+    function removeWeightBoostProvider(address provider) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 idx = _providerIdx(provider);
+        if (idx == 0) revert WeightBoostProviderNotFound();
 
-        entry.enabled = enabled;
-        emit WeightBoostProviderStateSet(providerAddr, enabled);
+        $.weightBoostProviders[idx - 1] = $.weightBoostProviders[$.weightBoostProviders.length - 1];
+        $.weightBoostProviders.pop();
+        emit WeightBoostProviderRemoved(provider);
         _requestFullDepositInfoUpdate();
     }
 
@@ -201,8 +200,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function notifyWeightBoostProviderConfigChanged() external {
-        WeightBoostProviderEntry storage entry = _callerWeightBoostProvider();
-        if (!entry.enabled) return;
+        if (_providerIdx(msg.sender) == 0) return;
 
         emit WeightBoostProviderConfigChanged(msg.sender);
         _requestFullDepositInfoUpdate();
@@ -210,15 +208,15 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function notifyWeightBoostChanged(uint256 nodeOperatorId) external {
-        WeightBoostProviderEntry storage entry = _callerWeightBoostProvider();
-
-        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
+        MetaRegistryStorage storage $ = _storage();
+        uint256 groupId = $.groupIndex.groupIdByOperatorId[nodeOperatorId];
         // Provider notifications are node-operator scoped; operators outside groups have no group cache to refresh.
         if (groupId == NO_GROUP_ID) return;
 
-        if (!entry.enabled) return;
+        uint256 idx = _providerIdx(msg.sender);
+        if (idx == 0) return;
 
-        if (entry.mode == WeightBoostProviderMode.MaxPerGroup) {
+        if ($.weightBoostProviders[idx - 1].mode == WeightBoostProviderMode.MaxPerGroup) {
             _refreshGroupWeights(groupId);
             return;
         }
@@ -227,33 +225,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
-    function getWeightBoostProviders() external view returns (IWeightBoostProvider[] memory providers) {
-        MetaRegistryStorage storage $ = _storage();
-        uint256 providersCount = $.weightBoostProviders.length;
-        providers = new IWeightBoostProvider[](providersCount);
-        for (uint256 i; i < providersCount; ++i) {
-            providers[i] = $.weightBoostProviders[i].provider;
-        }
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function getWeightBoostProvidersCount() external view returns (uint256 count) {
-        count = _storage().weightBoostProviders.length;
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry) {
-        entry = _getWeightBoostProviderEntry(providerId);
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode) {
-        mode = _getWeightBoostProviderEntry(providerId).mode;
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function getWeightBoostProviderId(address provider) external view returns (uint256 providerId) {
-        providerId = _storage().weightBoostProviderIdByAddress[provider];
+    function getWeightBoostProviders() external view returns (WeightBoostProviderEntry[] memory providers) {
+        providers = _storage().weightBoostProviders;
     }
 
     /// @inheritdoc IMetaRegistry
@@ -321,11 +294,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 totalExternalStake = _totalExternalStake($.groups[groupId].externalOperators);
         if (totalExternalStake == 0) return (weight, 0);
 
-        externalStake = Math.mulDiv(
-            totalExternalStake,
-            weight,
-            $.effectiveWeightCache.groupEffectiveWeightSum[groupId]
-        );
+        externalStake = (totalExternalStake * weight) / $.effectiveWeightCache.groupEffectiveWeightSum[groupId];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -447,11 +416,9 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @dev `noId` should be a part of group with `groupId`.
     function _refreshOperatorWeight(uint256 groupId, uint256 noId) internal {
         MetaRegistryStorage storage $ = _storage();
-        uint256 share = $.groupIndex.shareByOperatorId[noId];
 
-        (uint256 groupNumerator, uint256 groupDenominator) = _getGroupWeightBoostMultiplier($.groups[groupId]);
-        uint256 multiplierBP = _getWeightBoostMultiplierBP(noId, groupNumerator, groupDenominator);
-        uint256 newWeight = _getLatestEffectiveWeight(noId, share, multiplierBP);
+        uint256 groupMultiplier = _getGroupWeightBoostMultiplier($.groups[groupId]);
+        uint256 newWeight = _getLatestEffectiveWeight(noId, groupMultiplier);
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
         if (oldWeight != newWeight) {
@@ -469,16 +436,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _refreshGroupWeights(uint256 groupId) internal {
         MetaRegistryStorage storage $ = _storage();
         CachedOperatorGroup storage group = $.groups[groupId];
-        (uint256 groupNumerator, uint256 groupDenominator) = _getGroupWeightBoostMultiplier(group);
+        uint256 groupMultiplier = _getGroupWeightBoostMultiplier(group);
 
         uint256 effectiveWeightSum;
         uint256 subOperatorsCount = group.subNodeOperatorIds.length;
         for (uint256 i; i < subOperatorsCount; ++i) {
             uint256 noId = group.subNodeOperatorIds[i];
-            uint256 share = $.groupIndex.shareByOperatorId[noId];
-            // Multiply raw BP values first and divide once, so neither order nor mode split affects rounding.
-            uint256 multiplierBP = _getWeightBoostMultiplierBP(noId, groupNumerator, groupDenominator);
-            uint256 effectiveWeight = _getLatestEffectiveWeight(noId, share, multiplierBP);
+            uint256 effectiveWeight = _getLatestEffectiveWeight(noId, groupMultiplier);
             _setEffectiveWeight(noId, effectiveWeight);
             effectiveWeightSum += effectiveWeight;
         }
@@ -528,14 +492,16 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     function _getLatestEffectiveWeight(
         uint256 nodeOperatorId,
-        uint256 share,
-        uint256 multiplierBP
+        uint256 groupMultiplier
     ) internal view returns (uint256) {
         uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
+        uint256 share = _storage().groupIndex.shareByOperatorId[nodeOperatorId];
         if (baseWeight == 0 || share == 0) return 0;
 
-        // One division for both BP factors; flooring the share first would amplify its rounding by the multiplier.
-        return Math.mulDiv(baseWeight * share, multiplierBP, MAX_BP * MAX_BP);
+        // `share` and each provider multiplier are BP factors, hence MAX_BP ** (1 + providers); one division floors once.
+        return
+            (baseWeight * share * _getOperatorWeightBoostMultiplier(nodeOperatorId) * groupMultiplier) /
+            MAX_BP ** (1 + _storage().weightBoostProviders.length);
     }
 
     function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
@@ -544,44 +510,28 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     function _getGroupWeightBoostMultiplier(
         CachedOperatorGroup storage group
-    ) internal view returns (uint256 numerator, uint256 denominator) {
+    ) internal view returns (uint256 multiplier) {
         WeightBoostProviderEntry[] storage providers = _storage().weightBoostProviders;
         uint256 providersCount = providers.length;
-        numerator = MAX_BP;
-        denominator = 1;
+        multiplier = 1;
         for (uint256 i; i < providersCount; ++i) {
             WeightBoostProviderEntry storage entry = providers[i];
-            if (!entry.enabled || entry.mode != WeightBoostProviderMode.MaxPerGroup) continue;
+            if (entry.mode != WeightBoostProviderMode.MaxPerGroup) continue;
 
-            numerator *= _getProviderMaxPerGroupWeightBoostMultiplierBP(entry.provider, group);
-            denominator *= MAX_BP;
+            multiplier *= _getProviderMaxPerGroupWeightBoostMultiplierBP(entry.provider, group);
         }
     }
 
-    function _getOperatorWeightBoostMultiplier(
-        uint256 nodeOperatorId
-    ) internal view returns (uint256 numerator, uint256 denominator) {
+    function _getOperatorWeightBoostMultiplier(uint256 nodeOperatorId) internal view returns (uint256 multiplier) {
         WeightBoostProviderEntry[] storage providers = _storage().weightBoostProviders;
         uint256 providersCount = providers.length;
-        numerator = MAX_BP;
-        denominator = 1;
+        multiplier = 1;
         for (uint256 i; i < providersCount; ++i) {
             WeightBoostProviderEntry storage entry = providers[i];
-            if (!entry.enabled || entry.mode != WeightBoostProviderMode.PerNodeOperator) continue;
+            if (entry.mode != WeightBoostProviderMode.PerNodeOperator) continue;
 
-            numerator *= entry.provider.getWeightBoostMultiplierBP(nodeOperatorId);
-            denominator *= MAX_BP;
+            multiplier *= entry.provider.getWeightBoostMultiplierBP(nodeOperatorId);
         }
-    }
-
-    function _getWeightBoostMultiplierBP(
-        uint256 nodeOperatorId,
-        uint256 groupNumerator,
-        uint256 groupDenominator
-    ) internal view returns (uint256 multiplierBP) {
-        (uint256 operatorNumerator, uint256 operatorDenominator) = _getOperatorWeightBoostMultiplier(nodeOperatorId);
-        // Both fractions are in BP, so their product carries an extra MAX_BP factor.
-        multiplierBP = Math.mulDiv(operatorNumerator, groupNumerator, operatorDenominator * groupDenominator * MAX_BP);
     }
 
     function _getProviderMaxPerGroupWeightBoostMultiplierBP(
@@ -589,10 +539,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         CachedOperatorGroup storage group
     ) internal view returns (uint256 maxMultiplierBP) {
         uint256 subOperatorsCount = group.subNodeOperatorIds.length;
-        if (subOperatorsCount == 0) return MAX_BP;
-
-        maxMultiplierBP = provider.getWeightBoostMultiplierBP(group.subNodeOperatorIds[0]);
-        for (uint256 i = 1; i < subOperatorsCount; ++i) {
+        for (uint256 i; i < subOperatorsCount; ++i) {
             uint256 candidateMultiplierBP = provider.getWeightBoostMultiplierBP(group.subNodeOperatorIds[i]);
             if (candidateMultiplierBP > maxMultiplierBP) {
                 maxMultiplierBP = candidateMultiplierBP;
@@ -600,18 +547,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         }
     }
 
-    /// @dev Provider IDs are 1-based; reverts for an unknown ID.
-    function _getWeightBoostProviderEntry(
-        uint256 providerId
-    ) internal view returns (WeightBoostProviderEntry storage entry) {
+    /// @dev Returns the 1-based position of `provider` in the providers list, or zero if it is not registered.
+    function _providerIdx(address provider) internal view returns (uint256 idx) {
         WeightBoostProviderEntry[] storage providers = _storage().weightBoostProviders;
-        if (providerId == 0 || providerId > providers.length) revert WeightBoostProviderNotFound();
-        entry = providers[providerId - 1];
-    }
-
-    /// @dev Resolves the calling weight boost provider; reverts for unregistered callers.
-    function _callerWeightBoostProvider() internal view returns (WeightBoostProviderEntry storage entry) {
-        entry = _getWeightBoostProviderEntry(_storage().weightBoostProviderIdByAddress[msg.sender]);
+        uint256 providersCount = providers.length;
+        for (uint256 i; i < providersCount; ++i) {
+            if (address(providers[i].provider) == provider) return i + 1;
+        }
     }
 
     /// @dev Returns the cached module address. Reverts if the address was

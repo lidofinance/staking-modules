@@ -112,17 +112,12 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function _assertWeightBoostProvider(
-        uint256 expectedProviderId,
+        IMetaRegistry.WeightBoostProviderEntry memory entry,
         address expectedProvider,
         IMetaRegistry.WeightBoostProviderMode expectedMode
-    ) internal view {
-        uint256 providerId = metaRegistry.getWeightBoostProviderId(expectedProvider);
-        assertEq(providerId, expectedProviderId, "unexpected weight boost provider ID");
-
-        IMetaRegistry.WeightBoostProviderEntry memory entry = metaRegistry.getWeightBoostProvider(expectedProviderId);
+    ) internal pure {
         assertEq(address(entry.provider), expectedProvider, "unexpected weight boost provider");
         assertEq(uint256(entry.mode), uint256(expectedMode), "unexpected weight boost provider mode");
-        assertTrue(entry.enabled, "weight boost provider disabled");
     }
 
     function test_state_onlyFull() public view {
@@ -167,20 +162,25 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_weightBoostProviders_onlyFull() public view {
-        assertEq(metaRegistry.getWeightBoostProvidersCount(), 4, "unexpected weight boost providers count");
+        IMetaRegistry.WeightBoostProviderEntry[] memory providers = metaRegistry.getWeightBoostProviders();
+        assertEq(providers.length, 4, "unexpected weight boost providers count");
         _assertWeightBoostProvider(
-            1,
+            providers[0],
             address(additionalBondRegistry),
             IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
         );
         _assertWeightBoostProvider(
-            2,
+            providers[1],
             address(nodeOperatorStrikes),
             IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
         );
-        _assertWeightBoostProvider(3, address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
         _assertWeightBoostProvider(
-            4,
+            providers[2],
+            address(ldoLockBoostProvider),
+            IMetaRegistry.WeightBoostProviderMode.MaxPerGroup
+        );
+        _assertWeightBoostProvider(
+            providers[3],
             address(customFeeRegistry),
             IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
         );

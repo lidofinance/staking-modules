@@ -38,7 +38,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
             expectedModuleScratchNonceFromGates = vm.parseJsonAddressArray(config, ".CuratedGates").length;
 
             // Each registered weight boost provider also requests full update and contributes one nonce.
-            expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProvidersCount();
+            expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProviders().length;
 
             // Each async weight boost provider config change also requests full update.
             expectedModuleScratchNonceFromWeightBoostProviderConfigChanges = deployParams
