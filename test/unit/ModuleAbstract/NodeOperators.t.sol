@@ -186,16 +186,13 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         uint256 noId = createNodeOperator(3);
         module.obtainDepositData(3, "");
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo memory validatorInfos = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidator(validatorInfos);
         uint256 keys = module.getNodeOperatorNonWithdrawnKeys(noId);
         assertEq(keys, 2);
     }

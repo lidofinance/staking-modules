@@ -27,6 +27,24 @@ interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQu
     /// @param topUpQueueLimit The limit of the top-up queue.
     function initialize(address admin, uint8 topUpQueueLimit) external;
 
+    /// @notice Update verified on-chain balance for a key.
+    /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE and only accepts a new proven maximum.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param keyIndex Index of the key in the Node Operator's keys storage
+    /// @param currentBalanceWei Proven current validator balance in wei
+    function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
+
+    /// @notice Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param startIndex Index of the first key
+    /// @param keysCount Count of keys to get
+    /// @return balances Confirmed balances above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances);
+
     /// @notice Clean the deposit queue from batches with no depositable keys
     /// @dev Use **eth_call** to check how many items will be removed
     /// @param maxItems How many queue items to review

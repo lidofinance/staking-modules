@@ -46,11 +46,8 @@ struct WithdrawnValidatorInfo {
     uint256 keyIndex;
     // Balance to be used to calculate penalties. For a regular withdrawal of a validator it's the withdrawal amount.
     // For a slashed validator it's its balance before slashing.
-    // The balance will be used to scale incurred penalties and calculate penalties due to offline validators via the shortcut mechanism.
+    // Modules choose how to use this balance to scale penalties and account for a balance shortage.
     uint256 exitBalance;
-    // Penalty for a single 32 ETH validator to charge due to slashing, scaled by the balance above.
-    // Zero for a regular withdrawal, which is penalized by the balance shortage instead.
-    uint256 slashingPenalty;
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
@@ -123,6 +120,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
+    error ValidatorAlreadyWithdrawn();
 
     error InvalidAmount();
     error InvalidInput();
@@ -429,13 +427,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param timeToWithdrawable Time left until the slashed key becomes withdrawable on the Consensus Layer
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external;
 
-    /// @notice Update verified on-chain balance for a key.
-    /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param currentBalanceWei Proven current validator balance in wei
-    function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
-
     /// @notice Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
     /// @param startIndex Index of the first key
@@ -447,26 +438,16 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 keysCount
     ) external view returns (uint256[] memory balances);
 
-    /// @notice Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param startIndex Index of the first key
-    /// @param keysCount Count of keys to get
-    /// @return balances Confirmed balances above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyConfirmedBalances(
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external view returns (uint256[] memory balances);
-
-    /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
+    /// @notice Report a Node Operator's key as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:
     ///         - if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
     ///           block;
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
-    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
-    function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
+    /// @dev Reverts if the validator has already been reported as withdrawn.
+    /// @param info The withdrawn validator report
+    function reportRegularWithdrawnValidator(WithdrawnValidatorInfo calldata info) external;
 
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
