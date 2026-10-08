@@ -213,6 +213,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         // Provider notifications are node-operator scoped; operators outside groups have no group cache to refresh.
         if (groupId == NO_GROUP_ID) return;
 
+        // Mostly warm-up gas: the refresh below reads the same provider slots again.
         uint256 idx = _providerIdx(msg.sender);
         if (idx == 0) return;
 
