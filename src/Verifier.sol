@@ -12,6 +12,8 @@ import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
+import { ICSModule } from "./interfaces/ICSModule.sol";
+import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 /// @notice Convert withdrawal amount to wei
@@ -197,12 +199,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             keyIndex: data.validator.keyIndex
         });
 
-        _reportSingleValidator(
+        MODULE.reportRegularWithdrawnValidator(
             WithdrawnValidatorInfo({
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
-                exitBalance: withdrawalAmount,
-                slashingPenalty: 0
+                exitBalance: withdrawalAmount
             })
         );
     }
@@ -241,12 +242,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             keyIndex: data.validator.keyIndex
         });
 
-        _reportSingleValidator(
+        MODULE.reportRegularWithdrawnValidator(
             WithdrawnValidatorInfo({
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
-                exitBalance: withdrawalAmount,
-                slashingPenalty: 0
+                exitBalance: withdrawalAmount
             })
         );
     }
@@ -269,7 +269,40 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.recentBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        ICSModule(address(MODULE)).reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei)
+        );
+    }
+
+    // TODO: Move Curated proof reporting into its own verifier and remove this temporary entry point.
+    // TODO: Design separate Curated historical balance and terminal-validator proof APIs and witnesses.
+    /// @inheritdoc IVerifier
+    function processBalanceProofForCurated(ProcessBalanceProofInput calldata data) external whenResumed {
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
+        }
+
+        {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+        }
+
+        uint64 balanceGwei = _processBalanceProof(
+            data.validator,
+            data.balance,
+            data.recentBlock.header.stateRoot,
+            data.recentBlock.header.slot
+        );
+
+        ICuratedModule(address(MODULE)).syncValidatorBalance({
+            nodeOperatorId: data.validator.nodeOperatorId,
+            keyIndex: data.validator.keyIndex,
+            currentBalanceWei: gweiToWei(balanceGwei),
+            balanceSlot: data.recentBlock.header.slot.unwrap(),
+            allowDecrease: false
+        });
     }
 
     /// @inheritdoc IVerifier
@@ -298,13 +331,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.historicalBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
-    }
-
-    function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
-        WithdrawnValidatorInfo[] memory validatorExits = new WithdrawnValidatorInfo[](1);
-        validatorExits[0] = info;
-        MODULE.reportRegularWithdrawnValidators(validatorExits);
+        ICSModule(address(MODULE)).reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei)
+        );
     }
 
     function _getParentBlockRoot(uint64 blockTimestamp) internal view returns (bytes32) {
@@ -332,7 +363,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
-        uint256 expectedBalance = MODULE.getKeyConfirmedBalances(nodeOperatorId, keyIndex, 1)[0] +
+        // TODO: Implement a separate Curated terminal-validator proof path with its own witnesses.
+        // This amount-threshold path requires CSM confirmed balances and is unsupported by Curated.
+        uint256 expectedBalance = ICSModule(address(MODULE)).getKeyConfirmedBalances(nodeOperatorId, keyIndex, 1)[0] +
             ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         withdrawalAmount = withdrawal.object.amountWei();
         if (withdrawalAmount < (expectedBalance * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
