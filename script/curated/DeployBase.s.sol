@@ -35,7 +35,6 @@ import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 import { IMetaRegistry } from "../../src/interfaces/IMetaRegistry.sol";
-import { IWeightBoostProvider } from "../../src/interfaces/IWeightBoostProvider.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { JsonBindings } from "../utils/JsonBindings.sol";
@@ -777,9 +776,9 @@ abstract contract DeployBase is Script {
         proxy.proxy__changeAdmin(config.proxyAdmin);
     }
 
-    /// @dev Registration order assigns the provider ids, so keep the call sequence stable.
+    /// @dev Registration order sets the order of `getWeightBoostProviders()`, so keep the call sequence stable.
     function _addWeightBoostProvider(address provider, IMetaRegistry.WeightBoostProviderMode mode) internal {
-        metaRegistry.addWeightBoostProvider(IWeightBoostProvider(provider), mode);
+        metaRegistry.addWeightBoostProvider(provider, mode);
     }
 
     function _deployProxy(address admin, address implementation) internal returns (address) {

@@ -173,7 +173,7 @@ contract ERC20LockBoostProviderBaseTest is Test, Utilities, Fixtures {
         provider.initialize(admin, LOCK_PERIOD, _defaultSteps());
 
         vm.prank(admin);
-        registry.addWeightBoostProvider(provider, IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
+        registry.addWeightBoostProvider(address(provider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
 
         vm.prank(bondCurveWeightManager);
         registry.setBondCurveWeight(0, BASE_WEIGHT);
