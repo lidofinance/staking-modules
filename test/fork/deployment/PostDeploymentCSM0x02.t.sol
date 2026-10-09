@@ -49,12 +49,21 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertTrue(module.hasRole(role, deployParams.rewindTopUpQueueRoleHolder));
     }
 
-    function test_topUpQueueConfig() public view {
+    function test_topUpQueueEnabled() public view {
+        (bool enabled, , , ) = module.getTopUpQueue();
+        assertTrue(enabled, "top-up queue is disabled");
+    }
+
+    function test_topUpQueueLimit_scratch() public view {
         assertGt(deployParams.topUpQueueLimit, 0, "top-up queue limit in config must be non-zero");
 
-        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
-        assertTrue(enabled, "top-up queue is disabled");
+        (, uint256 limit, , ) = module.getTopUpQueue();
         assertEq(limit, deployParams.topUpQueueLimit, "top-up queue limit mismatch");
+    }
+
+    function test_topUpQueueLimit_afterVote() public view {
+        (, uint256 limit, , ) = module.getTopUpQueue();
+        assertEq(limit, 32, "top-up queue limit mismatch");
     }
 
     function test_initialization_onlyFull() public {
