@@ -14,6 +14,7 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 
@@ -636,6 +637,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 8 ether;
+        uint256 nonce = module.getNonce();
+
+        vm.expectEmit(address(module));
+        emit IStakingModule.NonceChanged(nonce + 1);
 
         uint256[] memory allocations = cm.allocateDeposits(
             6 ether,
@@ -647,6 +652,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         assertEq(allocations.length, 1);
         assertEq(allocations[0], 6 ether);
+        assertEq(module.getNonce(), nonce + 1);
         assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 6 ether);
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 6 ether);
     }
@@ -1205,10 +1211,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
     function test_topUpObtainDepositData_emptyKeysReturnsEmpty() public assertInvariants {
         uint256 nonce = module.getNonce();
+        vm.recordLogs();
         uint256[] memory allocations = cm.allocateDeposits(1 ether, new bytes[](0), UintArr(), UintArr(), UintArr());
 
         assertEq(allocations.length, 0);
-        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNonce(), nonce);
+        assertEq(vm.getRecordedLogs().length, 0);
     }
 
     function test_topUpObtainDepositData_allZeroWeightsReturnsZeroAllocations() public assertInvariants {
@@ -1233,21 +1241,56 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 0);
     }
 
-    function test_topUpObtainDepositData_zeroLimitSkipsAllocation() public assertInvariants {
+    function test_topUpObtainDepositData_repeatedZeroLimitDoesNotChangeNonce() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        for (uint256 i; i < 2; ++i) {
+            uint256[] memory allocations = cm.allocateDeposits(
+                2 ether,
+                BytesArr(key),
+                UintArr(0),
+                UintArr(noId),
+                UintArr(0)
+            );
+
+            assertEq(allocations, UintArr(0));
+            assertEq(module.getNonce(), nonce);
+        }
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(0));
+        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_topUpObtainDepositData_zeroIncrementAfterNonzeroStillChangesNonce() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
+        uint256 nonce = module.getNonce();
+
+        vm.expectEmit(address(module));
+        emit IStakingModule.NonceChanged(nonce + 1);
 
         uint256[] memory allocations = cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(0)
+            8 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(4 ether, 0)
         );
 
-        assertEq(allocations[0], 0);
+        assertEq(allocations, UintArr(4 ether, 0));
+        assertEq(module.getNonce(), nonce + 1);
+        assertEq(cm.getNodeOperatorBalance(firstId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(cm.getNodeOperatorBalance(secondId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_topUpObtainDepositData_zeroWeightOperatorSkipped() public assertInvariants {

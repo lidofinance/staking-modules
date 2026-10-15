@@ -100,13 +100,15 @@ library CuratedDepositAllocator {
     ///        until withdrawal settlement, so active slashing/leakage is accounted when penalties are finalized.
     ///      - Per-key top-up limits are not used as caps for operator-level allocation; they are
     ///        applied during key-level distribution and may leave unallocated remainder.
+    /// @return allocations Per-key allocations aligned to the input keys.
+    /// @return changed Whether any tracked stake was increased.
     function allocateAndDistributeTopUps(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 allocationAmount,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
-    ) external returns (uint256[] memory allocations) {
+    ) external returns (uint256[] memory allocations, bool changed) {
         uint256[] memory allocatedOperatorIds;
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
         uint256[] memory remainingOperatorAllocations;
@@ -115,14 +117,14 @@ library CuratedDepositAllocator {
             allocationAmount,
             uniqueOperatorIds
         );
-        if (allocatedOperatorIds.length == 0) return new uint256[](operatorIds.length);
+        if (allocatedOperatorIds.length == 0) return (new uint256[](operatorIds.length), false);
         allocations = _distributeAllocationsWithinLimits({
             operatorIds: operatorIds,
             topUpLimits: topUpLimits,
             allocatedOperatorIds: allocatedOperatorIds,
             remainingOperatorAllocations: remainingOperatorAllocations
         });
-        _applyTopUpAllocations({
+        changed = _applyTopUpAllocations({
             $: $,
             operatorIds: operatorIds,
             keyIndices: keyIndices,
@@ -442,7 +444,7 @@ library CuratedDepositAllocator {
         uint256[] calldata keyIndices,
         uint256[] memory allocations,
         uint256[] memory allocatedOperatorIds
-    ) private {
+    ) private returns (bool changed) {
         uint256[] memory appliedIncrements = new uint256[](allocatedOperatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
         for (uint256 i; i < allocatedOperatorIds.length; ++i) {
@@ -461,7 +463,10 @@ library CuratedDepositAllocator {
         }
 
         for (uint256 i; i < allocatedOperatorIds.length; ++i) {
+            // Per-key limits can reduce an operator's preliminary allocation to zero.
+            if (appliedIncrements[i] == 0) continue;
             StakeTracker.increaseOperatorBalance($, allocatedOperatorIds[i], appliedIncrements[i]);
+            changed = true;
         }
     }
 
