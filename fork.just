@@ -14,6 +14,9 @@ vote-upgrade:
     just _impersonate-script SimulateVote --sig="upgrade"
     just _impersonate-script SimulateVote --sig="postUpgrade"
 
+vote-gloas-verifier:
+    just _impersonate-script SimulateVote --sig="gloasVerifier"
+
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"
 

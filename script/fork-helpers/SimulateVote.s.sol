@@ -7,6 +7,8 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { CSModule } from "../../src/CSModule.sol";
+import { BaseModule } from "../../src/abstract/BaseModule.sol";
+import { CuratedModule } from "../../src/CuratedModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
@@ -24,8 +26,6 @@ import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../csm/DeployBase.s.sol";
-import { DeployCSM0x02Params } from "../csm0x02/DeployCSM0x02Base.s.sol";
-import { CuratedDeployParams } from "../curated/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
@@ -407,6 +407,36 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         vm.startBroadcast(_prepareAdmin(address(module)));
         module.rebuildTotalWithdrawnValidators();
+        vm.stopBroadcast();
+    }
+
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
+    function gloasVerifier() external {
+        string memory artifact = vm.readFile(vm.envString("DEPLOY_CONFIG"));
+        address oldVerifier = vm.parseJsonAddress(
+            artifact,
+            vm.keyExistsJson(artifact, ".VerifierV3") ? ".VerifierV3" : ".Verifier"
+        );
+        address newVerifier = vm.parseJsonAddress(artifact, ".VerifierGloas");
+        BaseModule module = BaseModule(address(Verifier(newVerifier).MODULE()));
+        ICircuitBreaker cb = ICircuitBreaker(vm.parseJsonAddress(artifact, ".CircuitBreaker"));
+        address pauser = cb.getPauser(oldVerifier);
+
+        vm.startBroadcast(_prepareAdmin(address(module)));
+        // 1. Revoke VERIFIER_ROLE from the previous Verifier
+        module.revokeRole(module.VERIFIER_ROLE(), oldVerifier);
+        // 2. Revoke REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE from the previous Verifier
+        module.revokeRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), oldVerifier);
+        // 3. Grant VERIFIER_ROLE to the new Verifier
+        module.grantRole(module.VERIFIER_ROLE(), newVerifier);
+        // 4. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to the new Verifier
+        module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), newVerifier);
+        // 5. Register the new Verifier in CircuitBreaker with the pauser of the previous one
+        cb.registerPauser(newVerifier, pauser);
+        // 6. Unregister the previous Verifier from CircuitBreaker (a zero pauser removes it)
+        cb.registerPauser(oldVerifier, address(0));
         vm.stopBroadcast();
     }
 }

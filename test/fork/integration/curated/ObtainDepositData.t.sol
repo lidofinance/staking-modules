@@ -4,7 +4,6 @@
 pragma solidity 0.8.33;
 
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
-import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
