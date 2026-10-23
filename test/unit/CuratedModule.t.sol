@@ -634,6 +634,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
     function test_topUpObtainDepositData_singleKey_fullAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
+        module.updateTargetValidatorsLimits(noId, 1, 2);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 8 ether;
@@ -1464,6 +1465,40 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         assertEq(allocations[0], 0);
         assertEq(allocations[1], 2 ether);
+    }
+
+    function test_topUpObtainDepositData_manualTargetLimitOperatorExcludedFromBaseline() public assertInvariants {
+        uint256 blockedId = createNodeOperator(3);
+        uint256 firstId = createNodeOperator(3);
+        module.obtainDepositData(6, "");
+        withdrawKey(blockedId, 0);
+
+        bytes[] memory pubkeys = new bytes[](3);
+        pubkeys[0] = module.getSigningKeys(blockedId, 1, 1);
+        pubkeys[1] = module.getSigningKeys(blockedId, 2, 1);
+        pubkeys[2] = module.getSigningKeys(firstId, 0, 1);
+        uint256[] memory keyIndices = UintArr(1, 2, 0);
+        uint256[] memory operatorIds = UintArr(blockedId, blockedId, firstId);
+        uint256[] memory limits = UintArr(10 ether, 10 ether, 10 ether);
+        uint256 snapshot = vm.snapshotState();
+
+        // Soft limit equal to the 2 non-withdrawn keys.
+        module.updateTargetValidatorsLimits(blockedId, 1, 2);
+        (, uint256[] memory ids, uint256[] memory amounts) = cm.getDepositsAllocation(8 ether);
+        assertEq(ids, UintArr(firstId));
+        assertEq(amounts, UintArr(8 ether));
+        uint256[] memory allocations = cm.allocateDeposits(8 ether, pubkeys, keyIndices, operatorIds, limits);
+        assertEq(allocations, UintArr(0, 0, 8 ether));
+
+        vm.revertToState(snapshot);
+
+        // Forced limit below the non-withdrawn keys.
+        module.updateTargetValidatorsLimits(blockedId, 2, 1);
+        (, ids, amounts) = cm.getDepositsAllocation(8 ether);
+        assertEq(ids, UintArr(firstId));
+        assertEq(amounts, UintArr(8 ether));
+        allocations = cm.allocateDeposits(8 ether, pubkeys, keyIndices, operatorIds, limits);
+        assertEq(allocations, UintArr(0, 0, 8 ether));
     }
 }
 

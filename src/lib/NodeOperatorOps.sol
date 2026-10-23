@@ -319,6 +319,12 @@ library NodeOperatorOps {
         }
     }
 
+    function isTargetLimitReached(NodeOperator storage no) internal view returns (bool) {
+        unchecked {
+            return no.targetLimitMode != 0 && no.targetLimit <= no.totalDepositedKeys - no.totalWithdrawnKeys;
+        }
+    }
+
     function capTopUpLimitsByKeyBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256[] calldata operatorIds,
@@ -335,6 +341,9 @@ library NodeOperatorOps {
             // working for stale or rewound head items.
             if ($.isValidatorWithdrawn[pointer]) continue;
             if ($.isValidatorSlashed[pointer]) continue;
+
+            // Manual limits only; VEBO ejects unbonded validators.
+            if (isTargetLimitReached($.nodeOperators[operatorIds[i]])) continue;
 
             // Share the remaining headroom across duplicate keys in the same batch so later entries
             // cannot reserve the same per-key capacity twice.
