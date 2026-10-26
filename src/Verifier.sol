@@ -119,6 +119,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
         if (firstSupportedSlot > gloasSlot) revert InvalidGloasSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
+        if (capellaSlot.unwrap() % SLOTS_PER_HISTORICAL_ROOT != 0) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
 
         WITHDRAWAL_CREDENTIALS = withdrawalCredentials;
