@@ -81,7 +81,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot,
             gloasSlot: Slot.wrap(100_501),
-            capellaSlot: Slot.wrap(42),
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -93,8 +93,24 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.GLOAS_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
-        assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
+        assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), 8192);
         assertEq(verifier.MIN_WITHDRAWAL_RATIO(), 9000);
+    }
+
+    function test_constructor_AlignedCapellaSlot(uint64 slot) public {
+        Slot capellaSlot = Slot.wrap(slot - (slot % 8192));
+        verifier = new Verifier({
+            withdrawalCredentials: someBytes32(),
+            module: address(module),
+            slotsPerEpoch: 32,
+            firstSupportedSlot: capellaSlot,
+            gloasSlot: capellaSlot,
+            capellaSlot: capellaSlot,
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+
+        assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(capellaSlot));
     }
 
     function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerEpoch() public {
@@ -105,7 +121,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 0,
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -119,7 +135,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot,
             gloasSlot: firstSupportedSlot.dec(),
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -133,7 +149,24 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot,
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot.inc(),
+            capellaSlot: Slot.wrap(106_496), // First multiple of 8192 above firstSupportedSlot.
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+    }
+
+    function test_constructor_RevertWhen_UnalignedCapellaSlot(uint64 slot) public {
+        slot = uint64(bound(slot, 1, Slot.unwrap(firstSupportedSlot)));
+        vm.assume(slot % 8192 != 0);
+
+        vm.expectRevert(IVerifier.InvalidCapellaSlot.selector);
+        verifier = new Verifier({
+            withdrawalCredentials: someBytes32(),
+            module: address(module),
+            slotsPerEpoch: 32,
+            firstSupportedSlot: firstSupportedSlot,
+            gloasSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(slot),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -147,7 +180,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -161,7 +194,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: admin
         });
@@ -175,7 +208,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 9000,
             admin: address(0)
         });
@@ -189,7 +222,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot,
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 0,
             admin: admin
         });
@@ -203,7 +236,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             slotsPerEpoch: 32,
             firstSupportedSlot: firstSupportedSlot,
             gloasSlot: firstSupportedSlot,
-            capellaSlot: firstSupportedSlot,
+            capellaSlot: Slot.wrap(8192),
             minWithdrawalRatio: 10_001,
             admin: admin
         });
