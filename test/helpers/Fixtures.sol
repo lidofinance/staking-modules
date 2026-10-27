@@ -1016,6 +1016,8 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
     Accounting internal accounting;
     IStakingRouter internal stakingRouter;
 
+    error NotEnoughKeysDeposited(uint256 nodeOperatorId, uint256 deposited, uint256 expected);
+
     constructor(CSModule module_, Accounting accounting_, IStakingRouter stakingRouter_) {
         module = module_;
         accounting = accounting_;
@@ -1040,11 +1042,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
             if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) return noId;
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        vm.startPrank(address(stakingRouter));
-        // potentially time-consuming or reverting due to block/tx gas limit
-        module.obtainDepositData(depositableValidatorsCount, "");
-        vm.stopPrank();
+        _depositKeys(noId, keysCount);
     }
 
     function getDepositedNodeOperatorWithSequentialActiveKeys(
@@ -1068,12 +1066,21 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
             }
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+        _depositKeys(noId, keysCount);
+        return (noId, 0);
+    }
+
+    /// @dev Deposits all depositable keys of the module, and ensures `keysCount` of them belong to `noId`.
+    function _depositKeys(uint256 noId, uint256 keysCount) internal virtual {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
         module.obtainDepositData(depositableValidatorsCount, "");
         vm.stopPrank();
-        return (noId, 0);
+
+        // Deposits might be capped, e.g. by the top-up queue capacity, leaving keys of `noId` undeposited.
+        uint256 deposited = module.getNodeOperator(noId).totalDepositedKeys;
+        if (deposited < keysCount) revert NotEnoughKeysDeposited(noId, deposited, keysCount);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal virtual returns (uint256 nodeOperatorId);
@@ -1155,6 +1162,22 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
         (noId, keyIndex) = module.getTopUpQueueItem(0);
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
+    }
+
+    function _depositKeys(uint256 noId, uint256 keysCount) internal override {
+        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
+        // Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
+        // would leave the freshly added keys undeposited.
+        if (enabled && limit < type(uint8).max) {
+            bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
+            if (!module.hasRole(role, address(this))) {
+                address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+                vm.prank(admin);
+                module.grantRole(role, address(this));
+            }
+            module.setTopUpQueueLimit(type(uint8).max);
+        }
+        super._depositKeys(noId, keysCount);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
