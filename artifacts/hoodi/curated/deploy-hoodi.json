@@ -52,6 +52,7 @@
     "chargePenaltyRecipient": "0x0534aA41907c9631fae990960bCC72d75fA7cfeD",
     "moduleType": "0x637572617465642d6f6e636861696e2d76320000000000000000000000000000",
     "generalDelayedPenaltyReporter": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
+    "topUpAllocationEnabler": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
     "queueLowestPriority": 0,
     "defaultKeyRemovalCharge": 0,
     "defaultGeneralDelayedPenaltyAdditionalFine": 100000000000000000,

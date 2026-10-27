@@ -7,6 +7,7 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { CSModule } from "../../src/CSModule.sol";
+import { CuratedModule } from "../../src/CuratedModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
@@ -193,6 +194,27 @@ contract SimulateVote is Script, ForkHelpersCommon {
         circuitBreaker.registerPauser(address(verifier), cbPauser);
         circuitBreaker.registerPauser(address(ejector), cbPauser);
 
+        vm.stopBroadcast();
+    }
+
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
+    function upgradeCurated() external {
+        _setUp();
+        if (moduleType != ModuleType.Curated) revert WrongModuleType();
+
+        address enabler = parseCuratedDeployParams(envVars().DEPLOY_CONFIG).topUpAllocationEnabler;
+
+        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
+        vm.startBroadcast(_prepareProxyAdmin(address(proxy)));
+        // 1. Upgrade and finalize CuratedModule v2 atomically.
+        proxy.proxy__upgradeToAndCall(address(curatedModuleImpl), abi.encodeCall(CuratedModule.finalizeUpgradeV2, ()));
+        vm.stopBroadcast();
+
+        vm.startBroadcast(_prepareAdmin(address(curatedModule)));
+        // 2. Grant the committee permission to enable top-up allocation.
+        curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), enabler);
         vm.stopBroadcast();
     }
 

@@ -33,10 +33,15 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 
 contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
-        assertEq(module.getInitializedVersion(), 1);
+        assertEq(module.getInitializedVersion(), 2);
     }
 
     function test_roles_onlyFull() public view {
+        bytes32 topUpRole = curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE();
+        assertEq(module.getRoleMemberCount(topUpRole), 1, "unexpected top-up allocation role members count");
+        assertTrue(deployParams.topUpAllocationEnabler != address(0), "missing top-up allocation enabler");
+        assertTrue(module.hasRole(topUpRole, deployParams.topUpAllocationEnabler), "missing top-up allocation role");
+
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
         uint256 gatesCount = curatedGates.length;
         assertEq(module.getRoleMemberCount(role), gatesCount);
@@ -57,6 +62,12 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         ICuratedModule(address(moduleImpl)).initialize({ admin: deployParams.aragonAgent });
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        curatedModule.finalizeUpgradeV2();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ICuratedModule(address(moduleImpl)).finalizeUpgradeV2();
     }
 
     function test_proxy_onlyFull() public view {
