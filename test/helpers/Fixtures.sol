@@ -488,6 +488,7 @@ contract DeploymentHelpers is Asserts {
         // Module
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
+        dst.topUpAllocationEnabler = src.topUpAllocationEnabler;
 
         // ParametersRegistry
         dst.queueLowestPriority = src.queueLowestPriority;
@@ -1231,6 +1232,12 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keyIndex, bytes memory pubkey) {
         (noId, keyIndex) = this.getDepositedNodeOperatorWithSequentialActiveKeys(nodeOperatorAddress, 1);
+        ICuratedModule cm = ICuratedModule(address(module));
+        if (!cm.isTopUpAllocationEnabled(noId)) {
+            address enabler = module.getRoleMember(cm.ENABLE_TOP_UP_ALLOCATION_ROLE(), 0);
+            vm.prank(enabler);
+            cm.enableTopUpAllocation(noId);
+        }
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 

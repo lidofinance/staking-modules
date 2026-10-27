@@ -845,6 +845,8 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(_getTopUpQueueLength(), 3);
 
+        csm.updateTargetValidatorsLimits(0, 1, 4);
+
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
@@ -1035,6 +1037,68 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(module.getNodeOperatorBalance(0), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         // Both the slashed head key and the topped-up follower must be cleared from the queue.
         assertEq(_getTopUpQueueLength(), 0);
+    }
+
+    function test_topUp_manualTargetLimitHeadKeyIsDequeuedWithoutAllocation() public {
+        createNodeOperator(3);
+        createNodeOperator(1);
+        csm.obtainDepositData(4, "");
+        withdrawKey(0, 0);
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
+        bytes[] memory pubkeys = new bytes[](4);
+        for (uint256 i; i < 3; ++i) {
+            pubkeys[i] = slice(packedPubkeys, i * 48, 48);
+        }
+        pubkeys[3] = csm.getSigningKeys(1, 0, 1);
+        uint256[] memory keyIndices = new uint256[](4);
+        uint256[] memory operatorIds = new uint256[](4);
+        uint256[] memory topUpLimits = new uint256[](4);
+        for (uint256 i; i < 4; ++i) {
+            keyIndices[i] = i < 3 ? i : 0;
+            operatorIds[i] = i < 3 ? 0 : 1;
+            topUpLimits[i] = 4 ether;
+        }
+        uint256[] memory expected = new uint256[](4);
+        expected[3] = 4 ether;
+        uint256 snapshot = vm.snapshotState();
+
+        // Soft limit equal to the 2 non-withdrawn keys.
+        csm.updateTargetValidatorsLimits(0, 1, 2);
+        uint256[] memory allocations = csm.allocateDeposits(8 ether, pubkeys, keyIndices, operatorIds, topUpLimits);
+        assertEq(allocations, expected);
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 3), UintArr(0, 0, 0));
+        assertEq(_getTopUpQueueLength(), 0);
+
+        vm.revertToState(snapshot);
+
+        // Forced limit below the non-withdrawn keys.
+        csm.updateTargetValidatorsLimits(0, 2, 1);
+        allocations = csm.allocateDeposits(8 ether, pubkeys, keyIndices, operatorIds, topUpLimits);
+        assertEq(allocations, expected);
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 3), UintArr(0, 0, 0));
+        assertEq(_getTopUpQueueLength(), 0);
+    }
+
+    function test_topUp_bondForcedTargetLimitStillToppedUp() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+        penalize(0, BOND_SIZE * 2);
+
+        (uint256 mode, uint256 target, , , , , , ) = csm.getNodeOperatorSummary(0);
+        assertEq(mode, 2);
+        assertLe(target, 2);
+
+        bytes memory key = csm.getSigningKeys(0, 0, 1);
+        uint256[] memory allocations = csm.allocateDeposits({
+            maxDepositAmount: 4 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4 ether)
+        });
+
+        assertEq(allocations, UintArr(4 ether));
     }
 
     function test_topUp_emitsKeyAllocatedBalanceChanged() public {

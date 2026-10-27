@@ -11,7 +11,9 @@ import { ModuleLinearStorage } from "../../abstract/ModuleLinearStorage.sol";
 import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreedy.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "../TransientUintUintMapLib.sol";
 import { ValidatorBalanceLimits } from "../ValidatorBalanceLimits.sol";
+import { NodeOperatorOps } from "../NodeOperatorOps.sol";
 import { StakeTracker } from "../StakeTracker.sol";
+import { TopUpAllocationLib } from "../TopUpAllocationLib.sol";
 
 /// @notice Curated deposit allocation helpers.
 /// @dev External deployment-linked library used by CuratedModule for bytecode savings.
@@ -65,9 +67,9 @@ library CuratedDepositAllocator {
 
     /// @dev Returns operator-level top-up allocations for the provided operators.
     ///      - Duplicated operator ids are not expected (caller guarantees uniqueness).
-    ///      - Only operators with non-zero allocation weight and usable top-up capacity are included.
+    ///      - Only operators with allocation enabled, non-zero allocation weight, usable top-up capacity and manual target limit not reached are included.
     ///      - Shares are computed across all eligible operators in the module
-    ///        (non-zero weight, non-zero quantized top-up capacity),
+    ///        (allocation enabled, non-zero weight, non-zero quantized top-up capacity, manual target limit not reached),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
@@ -92,7 +94,7 @@ library CuratedDepositAllocator {
     ///      - Raw operator ids may contain duplicates; they are deduplicated before operator-level allocation
     ///        to avoid overweighting operators that appear on multiple requested keys.
     ///      - Shares are computed across all eligible operators in the module
-    ///        (non-zero weight, non-zero quantized top-up capacity),
+    ///        (allocation enabled, non-zero weight, non-zero quantized top-up capacity, manual target limit not reached),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
@@ -270,8 +272,11 @@ library CuratedDepositAllocator {
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
-        // Build global share baseline across all eligible operators (non-zero weight + usable capacity).
+        // Build the global share baseline across operators with allocation enabled, non-zero weight, usable capacity
+        // and manual target limit not reached.
         for (uint256 i; i < operatorsCount; ++i) {
+            if (!TopUpAllocationLib.isEnabled(i)) continue;
+
             uint256 balance = StakeTracker.getOperatorBalance($, i);
             uint256 capacity = quantizeForTopUp(_topUpCapacity($.nodeOperators[i], balance));
             if (capacity == 0) continue;
@@ -279,6 +284,7 @@ library CuratedDepositAllocator {
 
             (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
             if (weight == 0) continue;
+            if (NodeOperatorOps.isTargetLimitReached($.nodeOperators[i])) continue;
             weightsByOperatorId[i] = weight;
             weightSum += weight;
 
@@ -352,8 +358,8 @@ library CuratedDepositAllocator {
 
     /// @notice Returns current top-up allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
-    ///      Includes operators regardless of top-up capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with usable capacity,
+    ///      Includes operators regardless of top-up capacity or whether allocation is enabled for informational purposes.
+    ///      Actual allocation recalculates shares only across operators with allocation enabled, usable capacity and manual target limit not reached,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param $ Base module storage pointer.

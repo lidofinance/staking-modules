@@ -46,6 +46,7 @@ contract DeployLocalDevNet is DeployBase {
         // Module
         config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.topUpAllocationEnabler = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;

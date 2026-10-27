@@ -36,7 +36,7 @@
     "gIFirstHistoricalSummary": "0x000000000000000000000000000000000000000000000000000000b600000018",
     "gIFirstBalanceNode": "0x0000000000000000000000000000000000000000000000000026000000000028",
     "verifierFirstSupportedSlot": 65536,
-    "verifierGloasSlot": "18446744073709551615",
+    "verifierGloasSlot": 4235264,
     "verifierWcType": 1,
     "capellaSlot": 0,
     "minWithdrawalRatio": 9900,
@@ -202,5 +202,6 @@
   "GeneralPenalty": "0xF05545ED71c60bBba6E73B6B70B15D4f5F22C0f4",
   "DepositQueueOps": "0xb430AA6C70A352c2aaC9813AE049A210dB11aB41",
   "BondCurvesLib": "0xC4511d09639e5E174506083443da230D39196323",
-  "git-ref": "a6be775483e17d76718f8852428b5251a75c6429"
+  "git-ref": "10f23860dab05dfb06a180f865548ffc3b8bfdb1",
+  "VerifierGloas": "0xb70fA371989d7C1FCb88d6Be10A83F286E8e3508"
 }

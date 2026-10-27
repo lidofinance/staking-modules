@@ -251,8 +251,8 @@ test-local *args:
     just test-curated-local {{args}}
     just test-csm0x02-local {{args}}
 
-# Deploy the Gloas Verifier of a module (CSM, CSM0x02, Curated) into a copy of its artifact on a fork of the live deployment, vote, and run the module's tests against it
-test-gloas-verifier-local module *args:
+# Deploy Gloas components on a fork of the live module, vote, and run upgrade and integration tests
+test-gloas-upgrade-local module *args:
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -266,7 +266,10 @@ test-gloas-verifier-local module *args:
     export RPC_URL={{anvil_rpc_url}}
 
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
-    just vote-gloas-verifier
+    export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
+    just vote-gloas-upgrade
+    # Avoid concurrent historical storage reads through Anvil.
+    forge test --match-path 'test/fork/vote-upgrade/*' --threads 1 -vvv {{args}}
     just test-integration {{args}}
 
 # Run all unit tests
@@ -459,7 +462,7 @@ _deploy-gloas-verifier-live-confirmed module *args:
 _gloas-verifier-config-name module:
     @echo {{ if lowercase(module) == "csm" { "upgrade-v3-" + chain + ".json" } else { "deploy-" + chain + ".json" } }}
 
-# Appends the Gloas Verifier to a copy of the module artifact placed in artifacts_dir
+# Updates a copy of the module artifact with Gloas deployments
 _deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -475,6 +478,7 @@ _deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
     just _copy-file \
         ./broadcast/DeployGloasVerifier{{chain_script_suffix}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
         {{artifacts_dir}}transactions-gloas-verifier.json
+    just _merge-external-libraries {{artifacts_dir}}${config_name} {{artifacts_dir}}transactions-gloas-verifier.json
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"

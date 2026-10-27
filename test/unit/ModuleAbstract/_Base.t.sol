@@ -110,7 +110,10 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         uploadMoreKeys(nodeOperatorId, keysCount, keys, signatures);
     }
 
-    function createNodeOperator(address managerAddress, bool extendedManagerPermissions) internal returns (uint256) {
+    function createNodeOperator(
+        address managerAddress,
+        bool extendedManagerPermissions
+    ) internal virtual returns (uint256) {
         return
             module.createNodeOperator(
                 managerAddress,

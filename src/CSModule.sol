@@ -118,6 +118,7 @@ contract CSModule is ICSModule, BaseModule {
     /// @inheritdoc IStakingModuleV2
     /// @dev The function strictly follows the top-up queue.
     ///      If the provided deposit amount can be distributed only on 4 keys, but 5 keys were provided, then the function reverts.
+    ///      Keys of an operator at its manual target limit get a zero allocation and are dequeued when processed.
     function allocateDeposits(
         uint256 maxDepositAmount,
         bytes[] calldata pubkeys,

@@ -310,12 +310,26 @@ library NodeOperatorOps {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
 
-        uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(nodeOperatorId);
+        (targetLimitMode, targetValidatorsCount) = getTargetLimit(no, nodeOperatorId, accounting);
+        stuckValidatorsCount = 0;
+        refundedValidatorsCount = 0;
+        stuckPenaltyEndTimestamp = 0;
+        totalExitedValidators = no.totalExitedKeys;
+        totalDepositedValidators = no.totalDepositedKeys;
+        depositableValidatorsCount = no.depositableValidatorsCount;
+    }
+
+    function getTargetLimit(
+        NodeOperator storage no,
+        uint256 nodeOperatorId,
+        IAccounting accounting
+    ) internal view returns (uint256 targetLimitMode, uint256 targetValidatorsCount) {
+        uint256 unbondedKeys = accounting.getUnbondedKeysCountToEject(nodeOperatorId);
         uint256 totalNonDepositedKeys = no.totalAddedKeys - no.totalDepositedKeys;
-        if (totalUnbondedKeys > totalNonDepositedKeys) {
+        if (unbondedKeys > totalNonDepositedKeys) {
             targetLimitMode = FORCED_TARGET_LIMIT_MODE_ID;
             unchecked {
-                targetValidatorsCount = no.totalAddedKeys - no.totalWithdrawnKeys - totalUnbondedKeys;
+                targetValidatorsCount = no.totalAddedKeys - no.totalWithdrawnKeys - unbondedKeys;
             }
             // NOTE: If a targetLimit is manually set for the Node Operator and the Node Operator has unbonded keys
             //       we take the lowest value and set the target limit mode to FORCED_TARGET_LIMIT_MODE_ID.
@@ -327,12 +341,12 @@ library NodeOperatorOps {
             targetLimitMode = no.targetLimitMode;
             targetValidatorsCount = no.targetLimit;
         }
-        stuckValidatorsCount = 0;
-        refundedValidatorsCount = 0;
-        stuckPenaltyEndTimestamp = 0;
-        totalExitedValidators = no.totalExitedKeys;
-        totalDepositedValidators = no.totalDepositedKeys;
-        depositableValidatorsCount = no.depositableValidatorsCount;
+    }
+
+    function isTargetLimitReached(NodeOperator storage no) internal view returns (bool) {
+        unchecked {
+            return no.targetLimitMode != 0 && no.targetLimit <= no.totalDepositedKeys - no.totalWithdrawnKeys;
+        }
     }
 
     function capTopUpLimitsByKeyBalance(
@@ -351,6 +365,9 @@ library NodeOperatorOps {
             // working for stale or rewound head items.
             if ($.isValidatorWithdrawn[pointer]) continue;
             if ($.isValidatorSlashed[pointer]) continue;
+
+            // Manual limits only; VEBO ejects unbonded validators.
+            if (isTargetLimitReached($.nodeOperators[operatorIds[i]])) continue;
 
             // Share the remaining headroom across duplicate keys in the same batch so later entries
             // cannot reserve the same per-key capacity twice.

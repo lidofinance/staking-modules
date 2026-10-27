@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Script } from "forge-std/Script.sol";
 
 import { Verifier } from "../src/Verifier.sol";
+import { CuratedModule } from "../src/CuratedModule.sol";
 import { ILidoLocator } from "../src/interfaces/ILidoLocator.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { WCType, toWC } from "./utils/WithdrawalCredentials.sol";
@@ -32,7 +33,6 @@ abstract contract DeployGloasVerifierBase is Script {
     address internal deployer;
 
     error ChainIdMismatch(uint256 actual, uint256 expected);
-    error GloasSlotNotSet();
     error CannotBeUsedInMainnet();
     error InvalidSecondAdmin();
 
@@ -41,10 +41,11 @@ abstract contract DeployGloasVerifierBase is Script {
         chainId = _chainId;
     }
 
-    function run(string memory gitRef, string memory paramsKey) external {
+    /// @notice Deploy the Gloas Verifier and update the deployment artifact.
+    /// @param gitRef Git revision of the deployed sources.
+    /// @param paramsKey Deployment parameters key in the artifact.
+    function run(string memory gitRef, string memory paramsKey) public virtual {
         if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
-        if (verifierGloasSlot == type(uint64).max) revert GloasSlotNotSet();
-
         string memory path = vm.envString("DEPLOY_CONFIG");
 
         vm.startBroadcast();
@@ -59,6 +60,24 @@ abstract contract DeployGloasVerifierBase is Script {
         vm.writeJson(vm.toString(address(verifier)), path, ".VerifierGloas");
         vm.writeJson(vm.toString(verifierGloasSlot), path, string.concat(paramsKey, ".verifierGloasSlot"));
         vm.writeJson(string.concat('"', gitRef, '"'), path, ".git-ref");
+    }
+
+    function _deployCuratedModule() internal {
+        CuratedModule cm = CuratedModule(module);
+
+        vm.startBroadcast();
+        CuratedModule implementation = new CuratedModule({
+            moduleType: cm.getType(),
+            lidoLocator: address(cm.LIDO_LOCATOR()),
+            parametersRegistry: address(cm.PARAMETERS_REGISTRY()),
+            accounting: address(cm.ACCOUNTING()),
+            exitPenalties: address(cm.EXIT_PENALTIES()),
+            metaRegistry: address(cm.META_REGISTRY())
+        });
+        vm.stopBroadcast();
+
+        string memory path = vm.envString("DEPLOY_CONFIG");
+        vm.writeJson(vm.toString(address(implementation)), path, ".CuratedModuleImpl");
     }
 
     function _deployVerifier() internal returns (Verifier verifier) {

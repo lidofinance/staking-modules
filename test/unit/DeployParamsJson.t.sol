@@ -68,6 +68,7 @@ contract DeployParamsJsonTest is Test {
         params.verifierFirstSupportedSlot = 100_500;
         params.verifierGloasSlot = 200_500;
         params.moduleType = keccak256("curated-onchain-v2");
+        params.topUpAllocationEnabler = address(0xC0FFEE);
         params.oracleMembers = new address[](1);
         params.oracleMembers[0] = address(0xBEEF);
         params.defaultBondCurve = new uint256[2][](1);
@@ -105,15 +106,16 @@ contract DeployParamsJsonTest is Test {
 
 contract DeployParamsArtifactsTest is DeploymentHelpers {
     function test_regressionArtifacts() public view {
-        string[4] memory paths = [
+        string[5] memory paths = [
             "./artifacts/mainnet/csm/upgrade-v3-mainnet.json",
             "./artifacts/mainnet/curated/deploy-mainnet.json",
             "./artifacts/mainnet/csm0x02/deploy-mainnet.json",
-            "./artifacts/hoodi/csm0x02/deploy-hoodi.json"
+            "./artifacts/hoodi/csm0x02/deploy-hoodi.json",
+            "./artifacts/hoodi/curated/deploy-hoodi.json"
         ];
         for (uint256 i; i < paths.length; ++i) {
             CommonDeployParams memory params = parseCommonDeployParams(vm.readFile(paths[i]));
-            assertEq(params.verifierGloasSlot, type(uint64).max);
+            assertGt(params.verifierGloasSlot, 0);
             assertEq(params.slotsPerEpoch, 32);
             assertGt(params.defaultKeysLimit, 0);
             assertGt(params.oracleMembers.length, 0);

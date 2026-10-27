@@ -93,6 +93,7 @@ struct CuratedDeployParams {
     // Module
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
+    address topUpAllocationEnabler;
     // ParametersRegistry
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
@@ -455,6 +456,7 @@ abstract contract DeployBase is Script {
 
             curatedModule.grantRole(curatedModule.PAUSE_ROLE(), config.resealManager);
             curatedModule.grantRole(curatedModule.RESUME_ROLE(), config.resealManager);
+            curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), config.topUpAllocationEnabler);
             accounting.grantRole(accounting.PAUSE_ROLE(), config.resealManager);
             accounting.grantRole(accounting.RESUME_ROLE(), config.resealManager);
             oracle.grantRole(oracle.PAUSE_ROLE(), config.resealManager);

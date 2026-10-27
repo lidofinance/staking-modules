@@ -55,4 +55,10 @@ contract DeployGloasVerifierHoodiCurated is DeployGloasVerifierHoodi {
         config.verifierWcType = WCType.Compounding;
         config.minWithdrawalRatio = 9950;
     }
+
+    /// @inheritdoc DeployGloasVerifierBase
+    function run(string memory gitRef, string memory paramsKey) public override {
+        super.run(gitRef, paramsKey);
+        _deployCuratedModule();
+    }
 }
