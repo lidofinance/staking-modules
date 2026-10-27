@@ -25,40 +25,48 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         uint256 curveId = accounting.getBondCurveId(noId);
 
         // Verify operator can deposit before weight change
-        (, , uint256 depositableBefore) = module.getStakingModuleSummary();
-        assertGt(depositableBefore, 0, "should have depositable keys");
+        assertGt(module.getNodeOperator(noId).depositableValidatorsCount, 0, "operator should have depositable keys");
 
         // Set weight to 0 — triggers requestFullDepositInfoUpdate
         metaRegistry.setBondCurveWeight(curveId, 0);
-        metaRegistry.refreshOperatorWeight(noId);
 
         // Deposit info is stale after weight change, run batch update
         integrationHelpers.runFullBatchDepositInfoUpdate();
 
-        // obtainDepositData should now return 0 keys (weight is zero)
-        vm.prank(address(stakingRouter));
-        (bytes memory pubkeys, ) = module.obtainDepositData(10, "");
-        assertEq(pubkeys.length, 0, "should not deposit with zero weight");
+        // The operator should have no depositable keys while its weight is zero.
+        assertEq(
+            module.getNodeOperator(noId).depositableValidatorsCount,
+            0,
+            "should not have depositable keys with zero weight"
+        );
 
         // Restore weight
         metaRegistry.setBondCurveWeight(curveId, 10000);
-        metaRegistry.refreshOperatorWeight(noId);
 
         // Run batch update to refresh deposit info
         integrationHelpers.runFullBatchDepositInfoUpdate();
 
-        // Now deposits should work again
-        (, , uint256 depositableAfter) = module.getStakingModuleSummary();
-        assertGt(depositableAfter, 0, "should have depositable keys after weight restore");
+        // Now this operator should be depositable again.
+        assertGt(
+            module.getNodeOperator(noId).depositableValidatorsCount,
+            0,
+            "should have depositable keys after weight restore"
+        );
     }
 
     function test_refreshAfterAccountingCurveUpdate() public {
         address noAddr = nextAddress("Operator");
-        uint256 noId = integrationHelpers.addNodeOperator(noAddr, 3);
+        uint256 keysCount = 4;
+        uint256 noId = integrationHelpers.addNodeOperator(noAddr, keysCount);
         uint256 curveId = accounting.getBondCurveId(noId);
+        uint256 bondBefore = accounting.getBondAmountByKeysCount(keysCount, curveId);
+        uint256 expectedBond = bondBefore * 2;
 
-        (, , uint256 depositableBefore) = module.getStakingModuleSummary();
-        assertGt(depositableBefore, 0, "should have depositable keys");
+        assertEq(
+            module.getNodeOperator(noId).depositableValidatorsCount,
+            keysCount,
+            "operator should start with all keys depositable"
+        );
 
         // Update the bond curve in Accounting (requires MANAGE_BOND_CURVES_ROLE)
         address accAdmin = accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0);
@@ -66,18 +74,26 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(this));
         vm.stopPrank();
 
-        // Create a curve with a higher bond requirement
+        // Create a curve with exactly twice the bond requirement for all four keys.
         IBondCurve.BondCurveIntervalInput[] memory newCurve = new IBondCurve.BondCurveIntervalInput[](1);
-        newCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 64 ether });
+        newCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: expectedBond / keysCount });
         accounting.updateBondCurve(curveId, newCurve);
+
+        assertEq(
+            accounting.getBondAmountByKeysCount(keysCount, curveId),
+            expectedBond,
+            "bond requirement should double"
+        );
 
         // Run batch update to refresh deposit info
         integrationHelpers.runFullBatchDepositInfoUpdate();
 
-        // Depositable count may have decreased due to higher bond requirement
-        (, , uint256 depositableAfter) = module.getStakingModuleSummary();
-        // The exact count depends on the operator's existing bond vs new curve,
-        // but the batch update should complete without error
+        // With the unchanged bond, only half of the keys remain depositable.
+        assertEq(
+            module.getNodeOperator(noId).depositableValidatorsCount,
+            keysCount / 2,
+            "operator should retain half of its depositable keys after curve update"
+        );
     }
 
     function test_refreshAfterGroupChange() public {

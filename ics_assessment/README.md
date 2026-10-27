@@ -42,6 +42,8 @@ Commonly edited constants:
   - `GNOSIS_CUTOFF_BLOCK`
 - Snapshot cutoff:
   - `SNAPSHOT_VOTE_TIMESTAMP`
+- Human Passport cutoff (UTC):
+  - `HUMAN_PASSPORT_CUTOFF_DATE`
 - High Signal window:
   - `HIGH_SIGNAL_START_DATE`
   - `HIGH_SIGNAL_END_DATE`
@@ -61,6 +63,9 @@ export HOODI_ARCHIVE_RPC_URL=...
 # refresh local artifacts
 python main.py sync all
 ```
+
+GitPOAP scoring uses the existing `engagement/data/gitpoap_holders.csv` snapshot;
+sync does not refresh it.
 
 One may wish to commit updated artifacts before committing the final assessment results.
 
@@ -115,12 +120,26 @@ Examples:
 python main.py sync all
 
 # Sync selective sources
-python main.py sync snapshot galxe gitpoap
+python main.py sync snapshot galxe
 
 # Sync with a custom chunk size
 python main.py sync --chunk-size 50000 aragon
 python main.py sync --chunk-size 50000 mainnet-performance
+python main.py sync --chunk-size 10000 circles
+
+# Infura: use a large range for sparse logs if the endpoint supports it
+python main.py sync --chunk-size 1000000000 aragon
 ```
+
+Log fetches default to 10,000-block chunks for compatibility with providers
+that restrict block ranges. For Infura endpoints that accept large ranges,
+increase `--chunk-size` (or set `ICS_SYNC_CHUNK_SIZE`) to avoid unnecessary RPC
+requests for sparse logs. A chunk size at least as large as the source's full
+block interval makes each log query a single `eth_getLogs` request. Provider
+response-size/result-count limits and timeouts still apply; reduce the chunk
+size if the endpoint rejects the query. `0` is invalid, not an unlimited mode.
+The setting applies to all selected targets, so run sources separately when
+their RPC providers need different limits.
 
 Supported sync targets:
 
@@ -128,7 +147,6 @@ Supported sync targets:
 - `aragon`
 - `snapshot`
 - `galxe`
-- `gitpoap`
 - `protocol-guild`
 - `obol-techne`
 - `ssv-verified`
@@ -194,6 +212,12 @@ Important sync outputs:
 
 The assessment now reads compact eligible-node artifacts for both mainnet and Hoodi CSM checks. Raw mainnet performance report JSON files are not needed at runtime.
 
+`node-owners` records the manager and reward addresses for each operator at the
+chain cutoff. Either address can identify an eligible operator, regardless of extended
+manager permissions; activity and performance requirements are unchanged.
+Recognizing experience through either address does not change claim permissions:
+claiming ICS for an existing operator still requires its on-chain owner.
+
 Mainnet performance sync reads the complete report history from
 `DistributionLogUpdated` events, starting with the first CSM v1 report and
 ending at `MAINNET_CUTOFF_BLOCK`. Mainnet eligibility requires at least 30
@@ -256,15 +280,19 @@ Environment variables used by sync:
   - `MAINNET_RPC_URL`
   - `HOODI_RPC_URL`
   - `ARBITRUM_RPC_URL`
+  - `GNOSIS_RPC_URL` (defaults to `https://rpc.gnosis.gateway.fm`)
 - archive RPCs for historical node-owner state:
   - `MAINNET_ARCHIVE_RPC_URL`
   - `HOODI_ARCHIVE_RPC_URL`
-  - if unset, they fall back to `MAINNET_RPC_URL` and `HOODI_RPC_URL`
+  - if unset or empty, they fall back to `MAINNET_RPC_URL` and `HOODI_RPC_URL`
 
 Operational note:
 
 - Infura has worked better for the common RPCs because it is less restrictive on large event/log fetch ranges.
 - Alchemy has worked better for archive RPCs used by historical node-owner state reads.
+- `IPFS_GATEWAY_URL` configures both performance-report downloaders and defaults
+  to `https://gateway.pinata.cloud/ipfs`. Empty optional endpoint variables use
+  their defaults.
 - If sync exits before starting a target, export the required RPC env vars above and retry.
 
 ## Data Layout
@@ -289,13 +317,13 @@ Static curated snapshots:
 - SSV verified operators (Experience and Humanity)
 - SDVTM participants
 - Holesky eligible addresses
+- GitPOAP holders (`engagement/data/gitpoap_holders.csv`)
 
 On-chain synced artifacts:
 
 - Aragon voters
 - Snapshot voters
 - Galxe loyalty points
-- GitPOAP holders
 - Protocol Guild holders
 - Obol Techne holders
 - Circles members
@@ -306,7 +334,12 @@ Live at runtime:
 - High Signal, if `HIGH_SIGNAL_API_KEY` is set. Lido High Signal is fetched by
   address, then SSV High Signal is fetched by the resolved High Signal username.
   The Engagement score uses the higher of the two scores.
-- Human Passport, if `HUMAN_PASSPORT_API_KEY` is set
+- Human Passport, if `HUMAN_PASSPORT_API_KEY` is set: fetches the most recent
+  score at or before `HUMAN_PASSPORT_CUTOFF_DATE` using the historical API.
+  No Passport snapshot is saved. An address with no score at cutoff (404)
+  contributes no Passport points; other HTTP errors abort the assessment.
+  The API key needs historical view permission. Coordinate rate limits with
+  Humanity before sweeping applicants; requests retain the 8-second delay.
 
 ## Environment Variables
 
@@ -318,12 +351,12 @@ Live at runtime:
 - `MAINNET_ARCHIVE_RPC_URL`
 - `HOODI_ARCHIVE_RPC_URL`
 - `ICS_SYNC_CHUNK_SIZE`
-  - optional default chunk size for sync log fetching
+  - optional block span for sync log fetching (default: 10,000 blocks)
 
 ## Tests
 
 ```bash
-pytest ics_assessment/tests
+PYTHON_DOTENV_DISABLED=1 python -m pytest ics_assessment/tests
 ```
 
 The suite includes:

@@ -115,18 +115,6 @@ test-csm-full-deploy *args:
 
     just test-deployment-full-scratch {{args}}
 
-# Run utility tests on fork with current state
-test-csm-current *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    eval "$(just _fork-up-and-down)"
-
-    export RPC_URL={{anvil_rpc_url}}
-    export DEPLOY_CONFIG={{deploy_config_path}}
-
-    just test-utils {{args}}
-
 # Internal helpers
 _deploy-csm-impl *args:
     FOUNDRY_PROFILE=deploy \

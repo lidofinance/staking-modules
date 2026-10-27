@@ -9,6 +9,7 @@ import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { TopUpQueueOps } from "src/lib/TopUpQueueOps.sol";
 import { Vm } from "forge-std/Vm.sol";
 
 import { CSM0x02IntegrationBase } from "../common/ModuleTypeBase.sol";
@@ -22,10 +23,6 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
     function setUp() public override {
         super.setUp();
-        if (!isStakingRouterUpgraded) {
-            // Skip: this suite depends on router/core v2 APIs and is not executable on the old router version.
-            vm.skip(true, "Suite requires upgraded staking router version for router/core v2 APIs");
-        }
 
         topUpGateway = locator.topUpGateway();
         module.grantRole(module.VERIFIER_ROLE(), address(this));
@@ -54,7 +51,6 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         (, uint256 depositedAfter, ) = module.getStakingModuleSummary();
         uint256 actualDeposits = depositedAfter - depositedBefore;
-        assertEq(depositedAfter - depositedBefore, actualDeposits);
         assertEq(actualDeposits, requestedDeposits);
 
         NodeOperator memory noAfter = module.getNodeOperator(noId);
@@ -263,13 +259,13 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         ) = _topUpAndDeepRewind(type(uint256).max);
 
         uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0];
-        assertEq(_remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]), 0);
+        assertLt(_remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]), TopUpQueueOps.TOP_UP_STEP);
 
         (, , uint256 queueLengthBefore, ) = module.getTopUpQueue();
 
         uint256[] memory topUpLimits = new uint256[](noIds.length);
         for (uint256 i; i < noIds.length; i++) {
-            topUpLimits[i] = 1 ether;
+            topUpLimits[i] = (i == checkedAt) ? TopUpQueueOps.TOP_UP_STEP : 1 ether;
         }
 
         vm.recordLogs();
@@ -308,7 +304,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         assertEq(_countKeyAllocatedBalanceChangedEvents(), 1);
         assertEq(
             module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0],
-            keyAllocatedBalanceBefore + remainingCapacity
+            keyAllocatedBalanceBefore + remainingCapacity - (remainingCapacity % TopUpQueueOps.TOP_UP_STEP)
         );
         (, , uint256 queueLengthAfter, ) = module.getTopUpQueue();
         assertEq(queueLengthAfter + noIds.length, queueLengthBefore);

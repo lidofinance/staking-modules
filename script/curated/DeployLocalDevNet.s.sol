@@ -30,6 +30,7 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
+        config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
         config.minWithdrawalRatio = 9950;
@@ -183,6 +184,9 @@ contract DeployLocalDevNet is DeployBase {
         // CircuitBreaker
         config.circuitBreaker = vm.envAddress("CSM_CIRCUIT_BREAKER_ADDRESS");
         config.circuitBreakerPauser = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+
+        // DG
+        config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
 
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 

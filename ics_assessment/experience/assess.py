@@ -15,7 +15,6 @@ from ics_assessment.experience.sources import (
     load_hoodi_eligible_ids,
     load_hoodi_owner_ids,
     load_mainnet_eligible_ids,
-    load_hoodi_owner_map,
     load_mainnet_owner_ids,
 )
 
@@ -189,12 +188,10 @@ class ExperienceEvaluator:
         extra point for Circles-verified addresses.
         """
         eligible_ids = load_hoodi_eligible_ids(self.sources)
-        node_operators = load_hoodi_owner_map(self.sources)
         eligible_addresses_holesky = load_holesky_eligible_addresses(self.sources)
         eligible_holesky = any(a in eligible_addresses_holesky for a in addresses)
 
-        addr_to_id: dict[str, str] = {addr.lower(): no_id for no_id, addr in node_operators.items()}
-        found_ids = {addr_to_id[a] for a in addresses if a in addr_to_id}
+        found_ids = set(load_hoodi_owner_ids(addresses, self.sources))
         if not found_ids and not eligible_holesky:
             return 0
 

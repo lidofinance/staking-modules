@@ -81,25 +81,19 @@ jobs:
       - name: Run unit-tests
         run: just test-unit
 
-      - name: Run tests for current CSM state on fork
-        run: just test-csm-current
+      - name: Run CSM integration regression on mainnet fork
+        run: just test-integration
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+          DEPLOY_CONFIG: ./artifacts/mainnet/csm/upgrade-v3-mainnet.json
 
-      # TODO: Enable later after mainnet deployment
-      # - name: Run tests for current Curated state on fork
-      #   run: just test-curated-current
-      #   env:
-      #     CHAIN: mainnet
-      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-
-      # TODO: Enable later after mainnet deployment
-      # - name: Run tests for current CSM0x02 state on fork
-      #   run: just test-csm0x02-current
-      #   env:
-      #     CHAIN: mainnet
-      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+      - name: Run Curated integration regression on mainnet fork
+        run: just test-integration
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+          DEPLOY_CONFIG: ./artifacts/mainnet/curated/deploy-mainnet.json
 
       - name: Run local deployment tests for CSM scratch deploy
         run: just test-csm-full-deploy

@@ -6,9 +6,9 @@ pragma solidity 0.8.33;
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 
-import { CSMIntegrationBase } from "../common/ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase } from "./ModuleTypeBase.sol";
 
-contract CleanDepositQueueTestCSM is CSMIntegrationBase {
+abstract contract CleanDepositQueueTestBase is ModuleTypeBase {
     address internal nodeOperator;
     uint256 internal defaultNoId;
     uint256 internal initialKeysCount = 5;
@@ -18,7 +18,7 @@ contract CleanDepositQueueTestCSM is CSMIntegrationBase {
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
@@ -28,12 +28,13 @@ contract CleanDepositQueueTestCSM is CSMIntegrationBase {
         vm.resumeGasMetering();
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         _setUpModule();
 
-        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
-        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
+        address moduleAdmin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+        bytes32 moduleAdminRole = module.DEFAULT_ADMIN_ROLE();
+        vm.prank(moduleAdmin);
+        module.grantRole(moduleAdminRole, address(this));
 
         handleStakingLimit();
         handleBunkerMode();
@@ -46,34 +47,27 @@ contract CleanDepositQueueTestCSM is CSMIntegrationBase {
         ICSModule csm = ICSModule(address(module));
 
         NodeOperator memory noBefore = module.getNodeOperator(defaultNoId);
-        uint256 enqueuedBefore = noBefore.enqueuedCount;
-        assertTrue(enqueuedBefore > 0, "NO should have enqueued keys");
+        assertGt(noBefore.enqueuedCount, 0, "NO should have enqueued keys");
 
-        // Remove all non-deposited keys to make queue entries stale
-        uint256 keysToRemove = initialKeysCount;
         vm.prank(nodeOperator);
-        module.removeKeys(defaultNoId, 0, keysToRemove);
+        module.removeKeys(defaultNoId, 0, initialKeysCount);
 
         NodeOperator memory noAfterRemoval = module.getNodeOperator(defaultNoId);
-        assertEq(noAfterRemoval.depositableValidatorsCount, 0, "Depositable count should be 0 after removing all keys");
-        assertTrue(noAfterRemoval.enqueuedCount > 0, "NO should have stale enqueued keys before cleanup");
+        assertEq(noAfterRemoval.depositableValidatorsCount, 0, "depositable count should be 0 after removing keys");
+        assertGt(noAfterRemoval.enqueuedCount, 0, "NO should have stale enqueued keys before cleanup");
 
-        // Clean the queue — stale entries should be removed
         (uint256 removed, ) = csm.cleanDepositQueue(type(uint256).max);
-        assertTrue(removed > 0, "Should remove stale batches");
+        assertGt(removed, 0, "should remove stale batches");
 
         NodeOperator memory noAfterClean = module.getNodeOperator(defaultNoId);
-        assertEq(noAfterClean.enqueuedCount, 0, "Enqueued count should be 0 after cleanup");
+        assertEq(noAfterClean.enqueuedCount, 0, "enqueued count should be 0 after cleanup");
     }
 
     function test_cleanDepositQueue_multipleStaleBatches() public assertInvariants {
         ICSModule csm = ICSModule(address(module));
-
-        // Add a second NO with keys
         address nodeOperator2 = nextAddress("NodeOperator2");
         uint256 noId2 = integrationHelpers.addNodeOperator(nodeOperator2, 3);
 
-        // Remove all keys from both NOs
         vm.prank(nodeOperator);
         module.removeKeys(defaultNoId, 0, initialKeysCount);
 
@@ -82,12 +76,11 @@ contract CleanDepositQueueTestCSM is CSMIntegrationBase {
 
         NodeOperator memory no1AfterRemoval = module.getNodeOperator(defaultNoId);
         NodeOperator memory no2AfterRemoval = module.getNodeOperator(noId2);
-        assertTrue(no1AfterRemoval.enqueuedCount > 0, "NO1 should have stale enqueued keys before cleanup");
-        assertTrue(no2AfterRemoval.enqueuedCount > 0, "NO2 should have stale enqueued keys before cleanup");
+        assertGt(no1AfterRemoval.enqueuedCount, 0, "NO1 should have stale enqueued keys before cleanup");
+        assertGt(no2AfterRemoval.enqueuedCount, 0, "NO2 should have stale enqueued keys before cleanup");
 
-        // Clean the queue
         (uint256 removed, ) = csm.cleanDepositQueue(type(uint256).max);
-        assertTrue(removed > 1, "Should remove multiple stale batches");
+        assertGt(removed, 1, "should remove multiple stale batches");
 
         NodeOperator memory no1 = module.getNodeOperator(defaultNoId);
         NodeOperator memory no2 = module.getNodeOperator(noId2);
@@ -97,13 +90,13 @@ contract CleanDepositQueueTestCSM is CSMIntegrationBase {
 
     function test_cleanDepositQueue_noop_whenNoStale() public assertInvariants {
         ICSModule csm = ICSModule(address(module));
-
-        // Live forks can already contain stale batches from other operators.
-        // First cleanup establishes a deterministic baseline for this test.
         csm.cleanDepositQueue(type(uint256).max);
 
-        // Second cleanup should be a noop.
         (uint256 removed, ) = csm.cleanDepositQueue(type(uint256).max);
-        assertEq(removed, 0, "Nothing should be removed from clean queue");
+        assertEq(removed, 0, "nothing should be removed from clean queue");
     }
 }
+
+contract CleanDepositQueueTestCSM is CleanDepositQueueTestBase, CSMIntegrationBase {}
+
+contract CleanDepositQueueTestCSM0x02 is CleanDepositQueueTestBase, CSM0x02IntegrationBase {}

@@ -1,7 +1,7 @@
+import asyncio
 import csv
 import importlib
 import json
-import sys
 import types
 
 import pytest
@@ -21,15 +21,56 @@ class DummyResp:
         return self._data
 
 
-def _load_module():
-    async_web3_stub = types.SimpleNamespace(AsyncHTTPProvider=object)
-    web3_stub = types.SimpleNamespace(
-        AsyncWeb3=async_web3_stub,
-        Web3=types.SimpleNamespace(HTTPProvider=object),
+def _patch_node_owner_web3(monkeypatch, mod, count, failure_counts):
+    state = {
+        "calls": {},
+        "disconnected": False,
+    }
+
+    class CountCall:
+        async def call(self, block_identifier=None):
+            return count
+
+    class OperatorCall:
+        def __init__(self, operator_id):
+            self.operator_id = operator_id
+
+        async def call(self, block_identifier=None):
+            operator_id = self.operator_id
+            state["calls"][operator_id] = state["calls"].get(operator_id, 0) + 1
+            if state["calls"][operator_id] <= failure_counts.get(operator_id, 0):
+                raise ConnectionError(f"failed operator {operator_id}")
+            address = f"0x{operator_id + 1:040x}"
+            return types.SimpleNamespace(
+                extendedManagerPermissions=False,
+                managerAddress=address,
+                rewardAddress=address,
+            )
+
+    functions = types.SimpleNamespace(
+        getNodeOperatorsCount=lambda: CountCall(),
+        getNodeOperator=lambda operator_id: OperatorCall(operator_id),
     )
-    sys.modules.setdefault("web3", web3_stub)
-    sys.modules.pop("ics_assessment.sync", None)
-    return importlib.import_module("ics_assessment.sync")
+    contract = types.SimpleNamespace(functions=functions)
+
+    class Provider:
+        async def disconnect(self):
+            state["disconnected"] = True
+
+    class FakeAsyncWeb3:
+        AsyncHTTPProvider = staticmethod(lambda url: url)
+
+        def __init__(self, provider):
+            self.eth = types.SimpleNamespace(contract=lambda **kwargs: contract)
+            self.provider = Provider()
+
+    monkeypatch.setattr(mod.experience_jobs, "AsyncWeb3", FakeAsyncWeb3)
+    monkeypatch.setattr(mod.experience_jobs, "read_csm_abi", lambda: "[]")
+    return state
+
+
+def _load_module():
+    return importlib.reload(importlib.import_module("ics_assessment.sync"))
 
 
 def test_expand_targets_all_dedupes():
@@ -38,9 +79,37 @@ def test_expand_targets_all_dedupes():
     assert targets == mod.JOB_ORDER
 
 
+def test_sync_all_runs_supported_sources_without_gitpoap(monkeypatch):
+    mod = _load_module()
+    called = []
+    monkeypatch.setattr(mod, "_ensure_required_rpcs", lambda target: None)
+    for target in mod.JOBS:
+        monkeypatch.setitem(mod.JOBS, target, lambda target=target: called.append(target))
+
+    assert mod.main(["all"]) == 0
+    assert called == [
+        "aragon",
+        "snapshot",
+        "galxe",
+        "protocol-guild",
+        "obol-techne",
+        "ssv-verified",
+        "node-owners",
+        "mainnet-performance",
+        "hoodi-eligible",
+        "circles",
+    ]
+
+
+def test_sync_rejects_gitpoap_target():
+    mod = _load_module()
+    with pytest.raises(SystemExit, match="^Unknown sync target: gitpoap$"):
+        mod.main(["gitpoap"])
+
+
 def test_sync_snapshot_writes_votes(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.engagement_jobs.SNAPSHOT_VOTERS_PATH = tmp_path / "snapshot_voters.csv"
+    monkeypatch.setattr(mod.engagement_jobs, "SNAPSHOT_VOTERS_PATH", tmp_path / "snapshot_voters.csv")
 
     calls = {"count": 0}
 
@@ -86,7 +155,7 @@ def test_sync_snapshot_writes_votes(monkeypatch, tmp_path):
 
 def test_sync_galxe_writes_points(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.engagement_jobs.GALXE_LOYALTY_POINTS_PATH = tmp_path / "galxe_loyalty_points.csv"
+    monkeypatch.setattr(mod.engagement_jobs, "GALXE_LOYALTY_POINTS_PATH", tmp_path / "galxe_loyalty_points.csv")
 
     def fake_post(url, json=None, headers=None):
         cursor = json["variables"]["cursor"]
@@ -128,34 +197,9 @@ def test_sync_galxe_writes_points(monkeypatch, tmp_path):
     ]
 
 
-def test_sync_gitpoap_writes_holders(monkeypatch, tmp_path):
-    mod = _load_module()
-    mod.engagement_jobs.GITPOAP_EVENTS_PATH = tmp_path / "gitpoap_events.csv"
-    mod.engagement_jobs.GITPOAP_HOLDERS_PATH = tmp_path / "gitpoap_holders.csv"
-    mod.engagement_jobs.GITPOAP_EVENTS_PATH.write_text("ID,Name\n1,evt1\n2,evt2\n")
-
-    class FakeSession:
-        def mount(self, *args, **kwargs):
-            return None
-
-        def get(self, url):
-            if url.endswith("/1/addresses"):
-                return DummyResp(200, {"addresses": ["0xabc"]})
-            return DummyResp(200, {"addresses": ["0xdef"]})
-
-    monkeypatch.setattr(mod.engagement_jobs.requests, "Session", FakeSession)
-    mod.engagement_jobs.sync_gitpoap()
-
-    rows = list(csv.DictReader(mod.engagement_jobs.GITPOAP_HOLDERS_PATH.open()))
-    assert rows == [
-        {"Address": "0xabc", "EventID": "1", "EventName": "evt1"},
-        {"Address": "0xdef", "EventID": "2", "EventName": "evt2"},
-    ]
-
-
 def test_sync_ssv_verified_writes_holders(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.experience_jobs.SSV_VERIFIED_OPERATORS_PATH = tmp_path / "ssv-verified-operators.csv"
+    monkeypatch.setattr(mod.experience_jobs, "SSV_VERIFIED_OPERATORS_PATH", tmp_path / "ssv-verified-operators.csv")
 
     def fake_get(url, timeout=None):
         assert "ssv.network" in url
@@ -188,11 +232,11 @@ def test_write_csv_uses_lf_line_endings(tmp_path):
     assert data == b"Address,VoteCount\n0xabc,1\n"
 
 
-def test_run_sync_requires_configured_rpc_env():
+def test_run_sync_requires_configured_rpc_env(monkeypatch):
     mod = _load_module()
-    mod.MAINNET_RPC_URL = ""
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "")
     called = {"value": False}
-    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
 
     try:
         mod.run_sync(["aragon"])
@@ -203,6 +247,121 @@ def test_run_sync_requires_configured_rpc_env():
     else:
         raise AssertionError("expected sync env validation")
     assert called["value"] is False
+
+
+def test_rpc_chain_id_uses_json_rpc_probe(monkeypatch):
+    mod = _load_module()
+    request = {}
+
+    def fake_post(url, json=None, timeout=None):
+        request.update(url=url, json=json, timeout=timeout)
+        return DummyResp(data={"jsonrpc": "2.0", "id": 1, "result": "0x88bb0"})
+
+    monkeypatch.setattr(mod.requests, "post", fake_post)
+
+    assert mod._rpc_chain_id("https://hoodi.example") == mod.HOODI_CHAIN_ID
+    assert request == {
+        "url": "https://hoodi.example",
+        "json": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_chainId",
+            "params": [],
+        },
+        "timeout": 20,
+    }
+
+
+def test_run_sync_verifies_rpc_chain_id(monkeypatch):
+    mod = _load_module()
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "https://mainnet.example")
+    called = {"value": False}
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
+
+    monkeypatch.setattr(
+        mod,
+        "_rpc_chain_id",
+        lambda url: 1 if url == mod.MAINNET_RPC_URL else None,
+    )
+
+    assert mod.run_sync(["aragon"]) == 0
+    assert called["value"] is True
+
+
+def test_run_sync_rejects_wrong_rpc_chain_id(monkeypatch):
+    mod = _load_module()
+    monkeypatch.setattr(mod, "MAINNET_RPC_URL", "https://hoodi.example")
+    called = {"value": False}
+    monkeypatch.setitem(mod.JOBS, "aragon", lambda: called.__setitem__("value", True))
+
+    monkeypatch.setattr(
+        mod,
+        "_rpc_chain_id",
+        lambda url: 560048 if url == mod.MAINNET_RPC_URL else None,
+    )
+
+    with pytest.raises(
+        SystemExit,
+        match="expected MAINNET_RPC_URL chain ID 1, got 560048",
+    ):
+        mod.run_sync(["aragon"])
+    assert called["value"] is False
+
+
+def test_node_owner_sync_writes_complete_snapshot_atomically(monkeypatch, tmp_path):
+    mod = _load_module()
+    state = _patch_node_owner_web3(
+        monkeypatch,
+        mod,
+        count=5,
+        failure_counts={},
+    )
+    output_path = tmp_path / "owners.json"
+
+    asyncio.run(
+        mod.experience_jobs._sync_node_operator_owners_one(
+            "https://archive.example",
+            "0xcontract",
+            123,
+            output_path,
+        )
+    )
+
+    assert state["calls"][1] == 1
+    assert state["disconnected"] is True
+    assert set(json.loads(output_path.read_text())) == {"0", "1", "2", "3", "4"}
+    assert list(tmp_path.glob(".owners.json.*.tmp")) == []
+
+
+def test_node_owner_sync_failure_preserves_retained_snapshot(monkeypatch, tmp_path):
+    mod = _load_module()
+    state = _patch_node_owner_web3(
+        monkeypatch,
+        mod,
+        count=5,
+        failure_counts={1: 1},
+    )
+    output_path = tmp_path / "owners.json"
+    retained = '{"retained": true}\n'
+    output_path.write_text(retained)
+
+    with pytest.raises(
+        ConnectionError,
+        match="failed operator 1",
+    ):
+        asyncio.run(
+            mod.experience_jobs._sync_node_operator_owners_one(
+                "https://archive.example",
+                "0xcontract",
+                123,
+                output_path,
+            )
+        )
+
+    assert state["calls"][1] == 1
+    assert state["disconnected"] is True
+    assert output_path.read_text() == retained
+    assert list(tmp_path.glob(".owners.json.*.tmp")) == []
 
 
 def test_request_performance_report_retries_then_succeeds(monkeypatch):
@@ -235,12 +394,11 @@ def test_request_performance_report_retries_then_succeeds(monkeypatch):
 
 def test_sync_mainnet_performance_writes_eligible_ids(monkeypatch, tmp_path):
     mod = _load_module()
-    mod.experience_jobs.ELIGIBLE_NODE_OPERATORS_MAINNET_PATH = (
-        tmp_path / "eligible_node_operators_mainnet.json"
-    )
-    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS = "0x" + "12" * 20
-    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK = 100
-    mod.experience_jobs.MAINNET_CUTOFF_BLOCK = 200
+    monkeypatch.setattr(mod.experience_jobs, "REQUIRED_ACTIVITY_WINDOW_MAINNET", 30)
+    monkeypatch.setattr(mod.experience_jobs, "ELIGIBLE_NODE_OPERATORS_MAINNET_PATH", tmp_path / "eligible_node_operators_mainnet.json")
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_ADDRESS", "0x" + "12" * 20)
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK", 100)
+    monkeypatch.setattr(mod.experience_jobs, "MAINNET_CUTOFF_BLOCK", 200)
 
     def fake_fetch_cids(w3, address, from_block, to_block):
         assert address == mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS
@@ -403,8 +561,9 @@ def test_mainnet_performance_requires_duty_evidence():
     assert mod.experience_jobs._eligible_operator_ids_from_report(report) == set()
 
 
-def test_mainnet_eligibility_requires_30_days_and_latest_performance():
+def test_mainnet_eligibility_requires_30_days_and_latest_performance(monkeypatch):
     mod = _load_module()
+    monkeypatch.setattr(mod.experience_jobs, "REQUIRED_ACTIVITY_WINDOW_MAINNET", 30)
     reports = [
         [
             {
@@ -459,9 +618,9 @@ def test_mainnet_activity_qualification_is_permanent():
     assert mod.experience_jobs._historically_active_operator_ids(frames) == {"42"}
 
 
-def test_get_event_logs_splits_range_on_failure():
+def test_get_event_logs_uses_configured_chunks(monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = 5
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", 5)
 
     class FakeEvent:
         def __init__(self):
@@ -478,9 +637,9 @@ def test_get_event_logs_splits_range_on_failure():
     assert event.calls == [(0, 4), (5, 9)]
 
 
-def test_get_event_logs_fails_fast_on_connection_error():
+def test_get_event_logs_fails_fast_on_connection_error(monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = None
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", None)
 
     class FakeEvent:
         def __init__(self):
@@ -502,9 +661,9 @@ def test_get_event_logs_fails_fast_on_connection_error():
     assert event.calls == [(0, 9)]
 
 
-def test_get_event_logs_logs_http_error_body(capsys):
+def test_get_event_logs_logs_http_error_body(capsys, monkeypatch):
     mod = _load_module()
-    mod.LOG_CHUNK_SIZE = None
+    monkeypatch.setattr(mod, "LOG_CHUNK_SIZE", None)
 
     class FakeEvent:
         def get_logs(self, from_block=None, to_block=None):

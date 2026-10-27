@@ -1,6 +1,6 @@
 import json
 
-IDVTC_ROUNDS = 1
+IDVTC_ROUNDS = 2
 
 def main():
     final_addresses = []

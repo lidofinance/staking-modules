@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -90,7 +91,18 @@ def _latest_total_score(payload: dict[str, Any] | None) -> float:
     total_scores = payload.get("totalScores", [])
     if not total_scores:
         return 0.0
-    return float(total_scores[0].get("totalScore", 0) or 0)
+    scores: list[tuple[datetime, float]] = []
+    for item in total_scores:
+        try:
+            score_day = datetime.strptime(item["day"], "%Y-%m-%d")
+            score = float(item["totalScore"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if HIGH_SIGNAL_START_DATE <= score_day <= HIGH_SIGNAL_END_DATE:
+            scores.append((score_day, score))
+    if not scores:
+        return 0.0
+    return max(scores, key=lambda item: item[0])[1]
 
 
 def fetch_high_signal_max(

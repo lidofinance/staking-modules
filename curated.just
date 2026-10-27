@@ -92,15 +92,3 @@ test-curated-full-deploy *args:
     export RPC_URL={{anvil_rpc_url}}
 
     just test-deployment-full-scratch {{args}}
-
-# Run utility tests on fork with current state
-test-curated-current *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    eval "$(just _fork-up-and-down)"
-
-    export RPC_URL={{anvil_rpc_url}}
-    export DEPLOY_CONFIG={{curated_deploy_config_path}}
-
-    just test-utils {{args}}

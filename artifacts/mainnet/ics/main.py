@@ -9,7 +9,7 @@ with open("abi/csm_abi.json", "r") as file:
     CSM_ABI = file.read()
 
 REFERENCE_BLOCK_MAINNET = 22845716
-ICS_ROUNDS = 5
+ICS_ROUNDS = 6
 
 exclude_files = [
     "exclude/allnodes.json",

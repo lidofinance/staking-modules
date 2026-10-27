@@ -199,6 +199,9 @@ interface IStakingRouter {
 
     function getContractVersion() external view returns (uint256);
 
+    /// @notice Returns the global per-block top-up cap in Gwei.
+    function getMaxTopUpPerBlockGwei() external view returns (uint64);
+
     function getDepositAllocations(
         uint256 _depositAmount,
         bool _isTopUp
