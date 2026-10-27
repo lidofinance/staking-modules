@@ -147,6 +147,31 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(curatedModule.getNodeOperatorBalance(noId), operatorBalanceBefore);
     }
 
+    function test_routerTopUp_repeatedZeroLimitsDoNotChangeNonce() public assertInvariants {
+        (uint256 noId, uint256 keyIndex, bytes memory pubkey) = integrationHelpers.getDepositableTopUpNodeOperator(
+            nextAddress()
+        );
+
+        (
+            uint256[] memory keyIndices,
+            uint256[] memory operatorIds,
+            bytes[] memory pubkeys,
+            uint256[] memory topUpLimits
+        ) = _singleTopUpArrays(noId, keyIndex, pubkey, 0);
+
+        assertGe(_getExpectedRouterTopUpAmount(), 2 ether);
+        uint256 nonce = stakingRouter.getStakingModuleNonce(moduleId);
+        uint256 stake = module.getTotalModuleStake();
+
+        for (uint256 i; i < 2; ++i) {
+            vm.prank(topUpGateway);
+            stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
+
+            assertEq(stakingRouter.getStakingModuleNonce(moduleId), nonce);
+            assertEq(module.getTotalModuleStake(), stake);
+        }
+    }
+
     function test_routerTopUp_revertsOnInvalidSigningKey() public {
         (uint256 noId, uint256 keyIndex, ) = integrationHelpers.getDepositableTopUpNodeOperator(nextAddress());
         bytes memory invalidPubkey = new bytes(48);

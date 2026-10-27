@@ -142,9 +142,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
             topUpLimits
         );
 
-        allocations = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, cappedTopUpLimits);
+        bool changed;
+        (allocations, changed) = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, cappedTopUpLimits);
 
-        _incrementModuleNonce();
+        if (changed) _incrementModuleNonce();
     }
 
     /// @inheritdoc ICuratedModule
@@ -286,15 +287,16 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] memory topUpLimits
-    ) internal returns (uint256[] memory allocations) {
+    ) internal returns (uint256[] memory allocations, bool changed) {
         BaseModuleStorage storage $ = _baseStorage();
-        allocations = CuratedDepositAllocator.allocateAndDistributeTopUps({
-            $: $,
-            allocationAmount: maxDepositAmount,
-            operatorIds: operatorIds,
-            keyIndices: keyIndices,
-            topUpLimits: topUpLimits
-        });
+        return
+            CuratedDepositAllocator.allocateAndDistributeTopUps({
+                $: $,
+                allocationAmount: maxDepositAmount,
+                operatorIds: operatorIds,
+                keyIndices: keyIndices,
+                topUpLimits: topUpLimits
+            });
     }
 
     function _validateTopUpPublicKeys(
