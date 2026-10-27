@@ -1,29 +1,52 @@
-import { ListUintNum64Type } from "@chainsafe/ssz/lib/type/listUintNum64.js";
-import { ProofType } from "@chainsafe/persistent-merkle-tree";
+// The script can be used to get `BeaconState.balances` proofs for the Verifier tests.
 
-// It's equivalent to BeaconState.balances but with limit of 16 items for more compact proofs.
-const List = new ListUintNum64Type(16);
-const e = List.defaultView();
+import { ProgressiveListBasicType, UintBigintType } from "@chainsafe/ssz";
+import {
+  createProof,
+  ProofType,
+  Tree,
+  concatGindices,
+  zeroNode,
+} from "@chainsafe/persistent-merkle-tree";
 
-e.push(32014202259); // 0
-e.push(32052509916); // 1
-e.push(32052509917); // 2
-e.push(32005726474); // 3
-e.push(32005724899); // 4
-e.push(0); // 5
-e.push(0); // 6
-e.push(32005693473); // 7
-e.push(32005705994); // 8
-e.push(32005732380); // 9
+// It's equivalent to `BeaconState.balances` in the Gloas state.
+const List = new ProgressiveListBasicType(new UintBigintType(8));
 
-const gI = List.getPropertyGindex(5);
-console.log("gI:", gI);
-const proof = e.tree.getProof({ type: ProofType.single, gindex: gI });
-console.log({
-  root: toHex(e.hashTreeRoot()),
-  leaf: toHex(proof.leaf),
-  proof: proof.witnesses.map(toHex),
-});
+// `BeaconState.balances` gindex in the Gloas state, @see src/lib/GIndices.sol.
+const GI_BALANCES = 0x167n;
+
+const e = List.defaultViewDU();
+
+e.push(32014202259n); // 0
+e.push(32052509916n); // 1
+e.push(32052509917n); // 2
+e.push(32005726474n); // 3
+e.push(32005724899n); // 4
+e.push(0n); // 5
+e.push(0n); // 6
+e.push(32005693473n); // 7
+e.push(32005705994n); // 8
+e.push(32005732380n); // 9
+e.push(18446744073709551615n); // 10
+e.commit();
+
+// The list is put in an otherwise empty state to get the proofs the verifier expects.
+const state = new Tree(zeroNode(GI_BALANCES.toString(2).length - 1));
+state.setNode(GI_BALANCES, e.node);
+
+console.log("stateRoot:", toHex(state.root));
+
+for (const index of [0, 1, 5, 7, 10]) {
+  const gI = concatGindices([GI_BALANCES, List.getPropertyGindex(index)]);
+  const proof = createProof(state.rootNode, { type: ProofType.single, gindex: gI });
+
+  console.log({
+    index,
+    gI: "0x" + gI.toString(16),
+    leaf: toHex(proof.leaf),
+    proof: proof.witnesses.map(toHex),
+  });
+}
 
 function toHex(t) {
   return "0x" + Buffer.from(t).toString("hex");

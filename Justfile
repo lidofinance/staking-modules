@@ -251,6 +251,24 @@ test-local *args:
     just test-curated-local {{args}}
     just test-csm0x02-local {{args}}
 
+# Deploy the Gloas Verifier of a module (CSM, CSM0x02, Curated) into a copy of its artifact on a fork of the live deployment, vote, and run the module's tests against it
+test-gloas-verifier-local module *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    local_dir=./artifacts/local/gloas-verifier/{{lowercase(module)}}/
+    local_private_key="$(just _local-private-key)"
+    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} "${local_dir}" "" --broadcast --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
+
+    export DEPLOY_CONFIG="${local_dir}$(just _gloas-verifier-config-name {{module}})"
+    export RPC_URL={{anvil_rpc_url}}
+
+    forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
+    just vote-gloas-verifier
+    just test-integration {{args}}
+
 # Run all unit tests
 test-unit *args:
     env -u FOUNDRY_THREADS forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
@@ -422,6 +440,41 @@ _deploy-utils module_name contract_name rpc_url artifacts_dir dry-prefix *args:
     just _copy-file \
         ./broadcast/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
         {{artifacts_dir}}/transactions.json
+
+deploy-gloas-verifier module *args:
+    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast {{args}}
+
+deploy-gloas-verifier-dry module *args:
+    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/local/{{lowercase(module)}}/ "/dry-run" {{args}}
+
+deploy-gloas-verifier-live module *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    just _deploy-gloas-verifier-live-confirmed {{module}} {{args}}
+
+[confirm("You are about to broadcast a Gloas Verifier deployment transaction to the network. Are you sure?")]
+_deploy-gloas-verifier-live-confirmed module *args:
+    just _assert-clean-workspace
+    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast --verify {{args}}
+
+_gloas-verifier-config-name module:
+    @echo {{ if lowercase(module) == "csm" { "upgrade-v3-" + chain + ".json" } else { "deploy-" + chain + ".json" } }}
+
+# Appends the Gloas Verifier to a copy of the module artifact placed in artifacts_dir
+_deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    config_name="$(just _gloas-verifier-config-name {{module}})"
+    params_key={{ if lowercase(module) == "curated" { ".CuratedDeployParams" } else { ".DeployParams" } }}
+    just _copy-file ./artifacts/{{chain}}/{{lowercase(module)}}/${config_name} {{artifacts_dir}}${config_name}
+
+    DEPLOY_CONFIG={{artifacts_dir}}${config_name} \
+    forge script script/DeployGloasVerifier{{chain_script_suffix}}.s.sol:DeployGloasVerifier{{chain_script_suffix}}{{module}} --sig="run(string,string)" \
+        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` "${params_key}"
+
+    just _copy-file \
+        ./broadcast/DeployGloasVerifier{{chain_script_suffix}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
+        {{artifacts_dir}}transactions-gloas-verifier.json
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"

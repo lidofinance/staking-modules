@@ -34,6 +34,8 @@
     "gIFirstHistoricalSummary": "0x000000000000000000000000000000000000000000000000000000b600000018",
     "gIFirstBalanceNode": "0x0000000000000000000000000000000000000000000000000026000000000028",
     "verifierFirstSupportedSlot": 65536,
+    "verifierGloasSlot": "18446744073709551615",
+    "verifierWcType": 2,
     "capellaSlot": 0,
     "minWithdrawalRatio": 9950,
     "defaultBondCurve": [
