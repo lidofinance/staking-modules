@@ -50,6 +50,7 @@ interface IMetaRegistry {
     event WeightBoostProviderAdded(address indexed provider, WeightBoostProviderMode mode);
     event WeightBoostProviderRemoved(address indexed provider);
     event WeightBoostProviderConfigChanged(address indexed provider);
+    event ExternalModuleSet(uint256 indexed moduleId, address moduleAddress);
     event GroupWeightsRefreshed(uint256 indexed groupId);
     event OperatorMetadataSet(uint256 indexed nodeOperatorId, OperatorMetadata metadata);
     event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256 oldWeight, uint256 newWeight);
@@ -71,7 +72,8 @@ interface IMetaRegistry {
     error WeightBoostProviderAlreadyAdded();
     error TooManyWeightBoostProviders();
     error WeightBoostProviderNotFound();
-    error ModuleAddressNotCached();
+    error InvalidExternalModule();
+    error ExternalModuleNotAllowed();
     error OperatorNameTooLong();
     error OperatorDescriptionTooLong();
 
@@ -177,6 +179,17 @@ interface IMetaRegistry {
     /// @dev Requests a full deposit info update that refreshes cached weights. Deposits are blocked until it completes.
     /// @param provider Boost provider to remove.
     function removeWeightBoostProvider(address provider) external;
+
+    /// @notice Set whether the stake of a module's operators counts as external stake of operator groups.
+    /// @dev Only operators of allowed modules can be added to groups.
+    /// @param moduleId StakingRouter ID of the module.
+    /// @param allowed Whether the stake of the module's operators counts as external stake.
+    function setExternalModuleAllowed(uint8 moduleId, bool allowed) external;
+
+    /// @notice Returns the address of a module whose operators' stake counts as external stake.
+    /// @param moduleId StakingRouter ID of the module.
+    /// @return moduleAddress Module address, or zero if the module's stake is not counted.
+    function getExternalModuleAddress(uint8 moduleId) external view returns (address moduleAddress);
 
     /// @notice Returns effective weight for the Node Operator.
     /// @param nodeOperatorId ID of the Node Operator.

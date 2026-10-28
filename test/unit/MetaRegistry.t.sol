@@ -13,7 +13,6 @@ import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
-import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { IWeightBoostProvider } from "src/interfaces/IWeightBoostProvider.sol";
 import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 
@@ -27,14 +26,6 @@ import { Fixtures } from "../helpers/Fixtures.sol";
 
 contract MetaRegistryForTest is MetaRegistry {
     constructor(address module) MetaRegistry(module) {}
-
-    function mock_setModuleAddressInCache(uint256 moduleId, address moduleAddress) external {
-        _storage().moduleAddressCache[moduleId] = moduleAddress;
-    }
-
-    function mock_getModuleAddressInCache(uint256 moduleId) external view returns (address moduleAddress) {
-        moduleAddress = _storage().moduleAddressCache[moduleId];
-    }
 }
 
 contract WeightBoostProviderMock is IWeightBoostProvider {
@@ -118,6 +109,9 @@ contract MetaRegistryGroupsBaseTest is MetaRegistryBaseTest {
         externalModule = new NodeOperatorsRegistryMock();
         externalModule.mock_setNodeOperatorsCount(2);
         stakingRouter.addModule(EXTERNAL_MODULE_ID, address(externalModule));
+
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, true);
     }
 
     function _norData(uint8 moduleId_, uint64 nodeOperatorId_) internal pure returns (bytes memory) {
@@ -618,12 +612,12 @@ contract MetaRegistryGroupsCreateTest is MetaRegistryGroupsBaseTest {
         _createGroup(_subOperatorsArr1(0, MAX_BP), externalOperators);
     }
 
-    function test_createGroup_RevertWhen_ExternalModuleDoesNotExist() public {
+    function test_createGroup_RevertWhen_ExternalModuleNotAllowed() public {
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
             _norData(uint8(EXTERNAL_MODULE_ID + 1), 0)
         );
 
-        vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
+        vm.expectRevert(IMetaRegistry.ExternalModuleNotAllowed.selector);
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), externalOperators);
     }
@@ -1977,53 +1971,98 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
     }
 }
 
-contract MetaRegistryModuleAddressCacheTest is MetaRegistryGroupsBaseTest {
-    function test_createGroup_CachesModuleAddressFromRouter() public {
-        externalModule.mock_setNodeOperatorsCount(1);
-        _setExternalNodeOperator(0, 1, 2);
+contract MetaRegistryExternalModulesTest is MetaRegistryGroupsBaseTest {
+    uint8 internal constant ANOTHER_EXTERNAL_MODULE_ID = EXTERNAL_MODULE_ID + 1;
 
-        vm.expectCall(
-            address(stakingRouter),
-            abi.encodeWithSelector(IStakingRouter.getStakingModule.selector, EXTERNAL_MODULE_ID)
-        );
-        vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
+    function test_setExternalModuleAllowed_Allow() public {
+        NodeOperatorsRegistryMock anotherModule = new NodeOperatorsRegistryMock();
+        stakingRouter.addModule(ANOTHER_EXTERNAL_MODULE_ID, address(anotherModule));
 
-        assertEq(registry.mock_getModuleAddressInCache(EXTERNAL_MODULE_ID), address(externalModule));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.ExternalModuleSet(ANOTHER_EXTERNAL_MODULE_ID, address(anotherModule));
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(ANOTHER_EXTERNAL_MODULE_ID, true);
+
+        assertEq(registry.getExternalModuleAddress(ANOTHER_EXTERNAL_MODULE_ID), address(anotherModule));
     }
 
-    function test_createGroup_UsesCachedModuleAddressOnCacheHit() public {
-        externalModule.mock_setNodeOperatorsCount(2);
-        _setBondCurveWeight(0, CURVE_WEIGHT);
-        _setExternalNodeOperator(0, 1, 10);
-        _setExternalNodeOperator(1, 2, 20);
+    function test_setExternalModuleAllowed_Disallow() public {
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.ExternalModuleSet(EXTERNAL_MODULE_ID, address(0));
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, false);
 
-        // Pre-populate the cache for EXTERNAL_MODULE_ID.
-        registry.mock_setModuleAddressInCache(EXTERNAL_MODULE_ID, address(externalModule));
-
-        // Remove the module from the router. If the cache is bypassed
-        // during group creation, this will revert.
-        address[] memory modules = new address[](1);
-        modules[0] = address(module);
-        stakingRouter.setModules(modules);
-
-        vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
+        assertEq(registry.getExternalModuleAddress(EXTERNAL_MODULE_ID), address(0));
     }
 
-    function test_getNodeOperatorWeightAndExternalStake_RevertWhen_ModuleAddressNotCached() public {
-        externalModule.mock_setNodeOperatorsCount(1);
+    function test_setExternalModuleAllowed_DisallowZeroesExternalStake() public {
+        _setExternalNodeOperator(0, 2, 10);
         _setBondCurveWeight(0, CURVE_WEIGHT);
-        _setExternalNodeOperator(0, 1, 2);
+        _createDefaultGroupWithExternal(0, MAX_BP, 0);
+
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, false);
+
+        (uint256 weight, uint256 externalStake) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(weight, CURVE_WEIGHT);
+        assertEq(externalStake, 0);
+    }
+
+    function test_setExternalModuleAllowed_ReAllowRestoresExternalStake() public {
+        _setExternalNodeOperator(0, 2, 10);
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        _createDefaultGroupWithExternal(0, MAX_BP, 0);
+
+        vm.startPrank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, false);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, true);
+        vm.stopPrank();
+
+        (, uint256 externalStake) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(externalStake, 256 ether);
+    }
+
+    function test_updateGroup_RemovesDisallowedModuleReference() public {
+        uint256 groupId = _nextGroupId();
+        _createDefaultGroupWithExternal(0, MAX_BP, 0);
+
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, false);
 
         vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
+        _updateGroup(groupId, _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
-        // Clear the cache entry to simulate the invariant violation.
-        registry.mock_setModuleAddressInCache(EXTERNAL_MODULE_ID, address(0));
+        assertEq(registry.getOperatorGroup(groupId).externalOperators.length, 0);
+    }
 
-        vm.expectRevert(IMetaRegistry.ModuleAddressNotCached.selector);
-        registry.getNodeOperatorWeightAndExternalStake(0);
+    function test_setExternalModuleAllowed_RevertWhen_NotAdmin() public {
+        expectRoleRevert(stranger, registry.DEFAULT_ADMIN_ROLE());
+        vm.prank(stranger);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, true);
+    }
+
+    function test_setExternalModuleAllowed_RevertWhen_ModuleUnregistered() public {
+        vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(ANOTHER_EXTERNAL_MODULE_ID, true);
+    }
+
+    function test_setExternalModuleAllowed_RevertWhen_ServedModule() public {
+        vm.expectRevert(IMetaRegistry.InvalidExternalModule.selector);
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(MODULE_ID, true);
+    }
+
+    function test_updateGroup_RevertWhen_ExternalModuleDisallowed() public {
+        uint256 groupId = _nextGroupId();
+        bytes memory externalData = _createDefaultGroupWithExternal(0, MAX_BP, 0);
+
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, false);
+
+        vm.expectRevert(IMetaRegistry.ExternalModuleNotAllowed.selector);
+        vm.prank(groupManager);
+        _updateGroup(groupId, _subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(externalData));
     }
 }
 
