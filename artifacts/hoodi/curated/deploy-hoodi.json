@@ -52,6 +52,7 @@
     "chargePenaltyRecipient": "0x0534aA41907c9631fae990960bCC72d75fA7cfeD",
     "moduleType": "0x637572617465642d6f6e636861696e2d76320000000000000000000000000000",
     "generalDelayedPenaltyReporter": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
+    "topUpAllocationEnabler": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
     "queueLowestPriority": 0,
     "defaultKeyRemovalCharge": 0,
     "defaultGeneralDelayedPenaltyAdditionalFine": 100000000000000000,
@@ -605,7 +606,7 @@
     "0x28518be9894C20135F280a9539617783b08a04c7"
   ],
   "CuratedModule": "0x87EB69Ae51317405FD285efD2326a4a11f6173b9",
-  "CuratedModuleImpl": "0xf01b6b3E27fD3A4c063E391A0714c770d9422CE8",
+  "CuratedModuleImpl": "0x0d7cBAf91cc6cbfB72ea70ec09c04855A06ac7Ee",
   "Ejector": "0xfDbde2B3554B69C84e0f8d7daB68D390Ff0f4394",
   "ExitPenalties": "0xad79e1d3B380cEb1a0e188fBAB91f85A446E9E54",
   "ExitPenaltiesImpl": "0xBed0DC3db54ff9cc0B5C1B17292d85681783b029",
@@ -629,6 +630,6 @@
   "NodeOperatorOps": "0xDD42EE5D54A1822021782F3F455bb99fBC19499A",
   "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
   "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
-  "CuratedDepositAllocator": "0xa4fCD4dDa0e4a847142E3592C97c77d8B9B3Cf5F",
-  "git-ref": "a6be775483e17d76718f8852428b5251a75c6429"
+  "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37",
+  "git-ref": "ce72d603f9460438d3c4544b7cc392758be16fdc"
 }

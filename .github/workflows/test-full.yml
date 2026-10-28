@@ -88,12 +88,11 @@ jobs:
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
           DEPLOY_CONFIG: ./artifacts/mainnet/csm/upgrade-v3-mainnet.json
 
-      - name: Run Curated integration regression on mainnet fork
-        run: just test-integration
+      - name: Run Curated upgrade and integration tests on mainnet fork
+        run: just test-curated-upgrade-local
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-          DEPLOY_CONFIG: ./artifacts/mainnet/curated/deploy-mainnet.json
 
       - name: Run local deployment tests for CSM scratch deploy
         run: just test-csm-full-deploy
