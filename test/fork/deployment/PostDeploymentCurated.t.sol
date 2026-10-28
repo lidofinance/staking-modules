@@ -111,6 +111,8 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
+    uint8 internal constant NOR_MODULE_ID = 1;
+
     function _assertWeightBoostProvider(
         IMetaRegistry.WeightBoostProviderEntry memory entry,
         address expectedProvider,
@@ -158,6 +160,18 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
             metaRegistry.getRoleMemberCount(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE()),
             0,
             "unexpected set bond curve weight role members count"
+        );
+    }
+
+    function test_externalModules_scratch_onlyFull() public view {
+        assertEq(metaRegistry.getExternalModuleAddress(NOR_MODULE_ID), address(0), "external module allowed");
+    }
+
+    function test_externalModules_afterVote() public view {
+        assertEq(
+            metaRegistry.getExternalModuleAddress(NOR_MODULE_ID),
+            stakingRouter.getStakingModule(NOR_MODULE_ID).stakingModuleAddress,
+            "unexpected NOR module address"
         );
     }
 
