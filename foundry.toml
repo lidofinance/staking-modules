@@ -72,6 +72,13 @@ block_gas_limit = 60_000_000
 extra_output = ["storageLayout"]
 build_info = true
 
+# Isolated, RPC-free witnesses for the verification harnesses and models.
+# These tests are executable checks, not Certora proofs.
+[profile.formal]
+test = "test/unit/formal"
+script = "certora/scripts"
+fuzz = { runs = 1000, max_test_rejects = 100_000 }
+
 [lint]
 lint_on_build = false
 exclude_lints = [

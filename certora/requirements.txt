@@ -1,0 +1,2 @@
+# Local Solidity compilation and CVL typechecking require Java 21 and solc 0.8.33.
+certora-cli==8.20.3

@@ -255,6 +255,22 @@ test-local *args:
 test-unit *args:
     env -u FOUNDRY_THREADS forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
 
+# Local Solidity compilation and CVL typechecking. This does not prove properties.
+certora-check *args:
+    python3 certora/run.py check {{args}}
+
+# Submit explicit cloud verification jobs; requires CERTORAKEY and consumes quota.
+certora-prove *args:
+    python3 certora/run.py prove {{args}}
+
+# RPC-free witnesses for verification harnesses/models.
+test-formal *args:
+    FOUNDRY_PROFILE=formal forge test -vv {{args}}
+
+# Seeded source mutations run in disposable copies; does not mutate this checkout.
+certora-mutate *args:
+    python3 certora/mutate.py {{args}}
+
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
     forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_afterVote.*' \

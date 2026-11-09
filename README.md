@@ -43,6 +43,15 @@ just test-unit
 
 Run `just --list` to see all available recipes.
 
+## Formal verification workstream
+
+[`certora/`](./certora/README.md) contains scoped CVL specifications, production-derived harnesses,
+explicit dependency models, and RPC-free Foundry witnesses for BondCore, BondLock, FeeSplits,
+FeeDistributor, and deposit allocation. `just certora-check` compiles Solidity and typechecks CVL;
+`just test-formal` runs executable witnesses. Neither command establishes a formal proof.
+Cloud Prover execution is explicit via `just certora-prove` and requires `CERTORAKEY`.
+Read the [assumptions and scope limits](./certora/ASSUMPTIONS.md) before interpreting results.
+
 ## Utility contracts
 
 The repository also ships a few utilities used for the modules:

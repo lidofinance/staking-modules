@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "scope": "Offline executable witness sensitivity checks. These are not Certora proof results.",
+  "mutations": [
+    {
+      "name": "bond-credit-omits-total",
+      "suite": "BondCore",
+      "source": "src/abstract/BondCore.sol",
+      "find": "$.totalBondShares += shares;",
+      "replace": "$.totalBondShares += 0;",
+      "test_path": "test/unit/formal/BondCoreVerification.t.sol",
+      "test": "test_debtFreeCreditUpdatesBothLedgers",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "bond-debit-omits-total",
+      "suite": "BondCore",
+      "source": "src/abstract/BondCore.sol",
+      "find": "$.totalBondShares -= shares;",
+      "replace": "$.totalBondShares -= 0;",
+      "test_path": "test/unit/formal/BondCoreVerification.t.sol",
+      "test": "test_depositCoversPenaltyDebtBeforeRetainingNewBond",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "bond-credit-ignores-debt",
+      "suite": "BondCore",
+      "source": "src/abstract/BondCore.sol",
+      "find": "_coverBondDebt(nodeOperatorId);",
+      "replace": "// Mutant: skip debt coverage.",
+      "test_path": "test/unit/formal/BondCoreVerification.t.sol",
+      "test": "test_depositCoversPenaltyDebtBeforeRetainingNewBond",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "fees-repeat-entitlement",
+      "suite": "FeeDistributor",
+      "source": "src/FeeDistributor.sol",
+      "find": "distributedShares[nodeOperatorId] = cumulativeFeeShares;",
+      "replace": "distributedShares[nodeOperatorId] = 0;",
+      "test_path": "test/unit/formal/FeeDistributorVerification.t.sol",
+      "test": "test_singleClaimUpdatesEntitlementAndObligation",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "fees-distribution-omits-obligation-debit",
+      "suite": "FeeDistributor",
+      "source": "src/FeeDistributor.sol",
+      "find": "totalClaimableShares -= sharesToDistribute;",
+      "replace": "totalClaimableShares -= 0;",
+      "test_path": "test/unit/formal/FeeDistributorVerification.t.sol",
+      "test": "test_singleClaimUpdatesEntitlementAndObligation",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "fees-report-omits-obligation-credit",
+      "suite": "FeeDistributor",
+      "source": "src/FeeDistributor.sol",
+      "find": "totalClaimableShares += distributed;",
+      "replace": "totalClaimableShares += 0;",
+      "test_path": "test/unit/formal/FeeDistributorVerification.t.sol",
+      "test": "testFuzz_reportPreservesFundingAndHistory",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "lock-expiry-incorrectly-accumulates",
+      "suite": "BondLock",
+      "source": "src/abstract/BondLock.sol",
+      "find": "if (currentLockUntil > block.timestamp) amount += lock.amount;",
+      "replace": "if (currentLockUntil >= block.timestamp) amount += lock.amount;",
+      "test_path": "test/unit/formal/BondLockVerification.t.sol",
+      "test": "testFuzz_atExpiryNewLockReplacesOldAmount",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "lock-omits-nonce-increment",
+      "suite": "BondLock",
+      "source": "src/abstract/BondLock.sol",
+      "find": "_incrementBondLockNonce(nodeOperatorId);",
+      "replace": "// Mutant: reuse old settlement nonce.",
+      "test_path": "test/unit/formal/BondLockVerification.t.sol",
+      "test": "testFuzz_liveLockAccumulatesAndDoesNotShortenDeadline",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "lock-partial-unlock-clears-deadline",
+      "suite": "BondLock",
+      "source": "src/abstract/BondLock.sol",
+      "find": "_changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);",
+      "replace": "_changeBondLock(nodeOperatorId, locked - amount, 0);",
+      "test_path": "test/unit/formal/BondLockVerification.t.sol",
+      "test": "testFuzz_partialThenFullUnlockKeepsNonceAndClearsDeadline",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "splits-wrong-basis-point-divisor",
+      "suite": "FeeSplits",
+      "source": "src/abstract/FeeSplits.sol",
+      "find": "uint256 amount = (splittableShares * feeSplit.share) / MAX_BP;",
+      "replace": "uint256 amount = (splittableShares * feeSplit.share) / (MAX_BP - 1);",
+      "test_path": "test/unit/formal/FeeSplitsVerification.t.sol",
+      "test": "testFuzz_fullTenRecipientSplitConservesBudget",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "splits-omits-pending-debit",
+      "suite": "FeeSplits",
+      "source": "src/abstract/FeeSplits.sol",
+      "find": "uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] - shares;",
+      "replace": "uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId];",
+      "test_path": "test/unit/formal/FeeSplitsVerification.t.sol",
+      "test": "test_pendingIncludesRetainedRemainder",
+      "expected_failure": "(?i)assertion failed"
+    },
+    {
+      "name": "allocator-omits-quantization",
+      "suite": "DepositAllocator",
+      "source": "src/lib/allocator/DepositAllocatorGreedy.sol",
+      "find": "return value - (value % step);",
+      "replace": "return value;",
+      "test_path": "test/unit/formal/DepositAllocatorVerification.t.sol",
+      "test": "testFuzz_quantization",
+      "expected_failure": "(?i)assertion failed"
+    }
+  ]
+}

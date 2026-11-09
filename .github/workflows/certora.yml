@@ -1,0 +1,142 @@
+name: Formal verification preparation
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "certora/**"
+      - "test/unit/formal/**"
+      - "foundry.toml"
+      - "remappings.txt"
+      - "package.json"
+      - "yarn.lock"
+      - ".foundryref"
+      - ".github/workflows/certora.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Local preparation or billable cloud Prover execution
+        type: choice
+        options: [check, prove]
+        default: check
+      suite:
+        description: Suite to execute
+        type: choice
+        options: [all, BondCore, BondLock, FeeSplits, FeeDistributor, DepositAllocator]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: certora-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.mode || 'check' }}
+  # Canceling a cloud client does not cancel submitted, potentially billable Prover jobs.
+  cancel-in-progress: ${{ inputs.mode != 'prove' }}
+
+jobs:
+  prepare:
+    name: Compile CVL and run executable witnesses (not proofs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Read pinned Foundry version
+        run: echo "FOUNDRY_VERSION=$(cat .foundryref)" >> "$GITHUB_ENV"
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - name: Install dependencies and pinned compiler
+        run: |
+          node .yarn/releases/yarn-4.1.1.cjs install --immutable
+          python -m pip install -r certora/requirements.txt
+          curl --fail --location --silent --show-error \
+            https://github.com/ethereum/solidity/releases/download/v0.8.33/solc-static-linux \
+            --output "$RUNNER_TEMP/solc"
+          echo "1274e5c4621ae478090c5a1f48466fd3c5f658ed9e14b15a0b213dc806215468  $RUNNER_TEMP/solc" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/solc"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Check orchestration safeguards
+        run: python -m unittest discover -s certora/tests -v
+      - name: Compile Solidity and typecheck every CVL suite
+        run: python certora/run.py check
+      - name: Run executable model and harness witnesses
+        env:
+          FOUNDRY_PROFILE: formal
+        run: forge test --use "$(command -v solc)" -vv
+      - name: Run seeded regression mutations
+        run: python certora/mutate.py --solc "$(command -v solc)" --output-dir certora/results/mutations
+      - name: Save local preparation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: certora-preparation
+          path: certora/results/
+          if-no-files-found: error
+
+  prove:
+    name: Cloud Prover (explicit dispatch only)
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'prove'
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Require a configured Prover key
+        env:
+          CERTORAKEY: ${{ secrets.CERTORAKEY }}
+        run: |
+          if [ -z "$CERTORAKEY" ]; then
+            echo "CERTORAKEY is not configured. No cloud jobs submitted."
+            exit 1
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install dependencies and pinned compiler
+        run: |
+          node .yarn/releases/yarn-4.1.1.cjs install --immutable
+          python -m pip install -r certora/requirements.txt
+          curl --fail --location --silent --show-error \
+            https://github.com/ethereum/solidity/releases/download/v0.8.33/solc-static-linux \
+            --output "$RUNNER_TEMP/solc"
+          echo "1274e5c4621ae478090c5a1f48466fd3c5f658ed9e14b15a0b213dc806215468  $RUNNER_TEMP/solc" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/solc"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Run selected cloud verification and wait for results
+        env:
+          CERTORAKEY: ${{ secrets.CERTORAKEY }}
+          SELECTED_SUITE: ${{ inputs.suite }}
+        run: |
+          if [ "$SELECTED_SUITE" = all ]; then
+            python certora/run.py prove --timeout 1800
+          else
+            python certora/run.py prove --suite "$SELECTED_SUITE" --timeout 1800
+          fi
+      - name: Save Prover execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: certora-prover-results
+          path: certora/results/
+          if-no-files-found: warn

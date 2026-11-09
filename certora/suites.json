@@ -1,0 +1,31 @@
+{
+  "BondCore": {
+    "config": "certora/confs/BondCore.conf",
+    "production": ["src/abstract/BondCore.sol"],
+    "boundary": "Internal bookkeeping with executable non-reentrant dependency models and a fixed 3:2 conversion; not Accounting authorization, collateral adequacy, or rebases."
+  },
+  "BondLock": {
+    "config": "certora/confs/BondLock.conf",
+    "production": ["src/abstract/BondLock.sol"],
+    "boundary": "Internal lock transitions, expiry and modulo nonce semantics; callers' authorization and penalty settlement integration are outside this harness."
+  },
+  "FeeSplits": {
+    "config": "certora/confs/FeeSplits.conf",
+    "production": ["src/abstract/FeeSplits.sol"],
+    "boundary": "Split arithmetic, configuration guards and pending-share bookkeeping within the production maximum split length; not actual Accounting transfers."
+  },
+  "FeeDistributor": {
+    "config": "certora/confs/FeeDistributor.conf",
+    "production": ["src/FeeDistributor.sol"],
+    "boundary": "Actual reward distribution and access checks with a non-reentrant exact-share token model, one-sibling real Merkle proofs and bounded strings; not arbitrary Merkle depth or oracle correctness."
+  },
+  "DepositAllocator": {
+    "config": "certora/confs/DepositAllocator.conf",
+    "production": [
+      "src/lib/allocator/DepositAllocatorGreedy.sol",
+      "src/lib/allocator/PackedSortKeyLib.sol",
+      "src/lib/allocator/PackedSortKeyMaxHeapLib.sol"
+    ],
+    "boundary": "Exactly two allocation operators, normalized positive X96 shares and bounded scalar amounts; standalone quantization/packing and small heap checks; not global fairness or arbitrary operator counts."
+  }
+}

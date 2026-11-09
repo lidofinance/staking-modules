@@ -33,3 +33,10 @@ ics-assessment/engagement/.cache/
 .local.just
 .wake/
 tags
+
+# Formal verification build products and local run evidence
+.certora_internal/
+.certora_config/
+certora/results/
+certora/.venv/
+__pycache__/
