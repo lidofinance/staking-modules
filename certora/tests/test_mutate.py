@@ -43,8 +43,8 @@ class ClassificationTests(unittest.TestCase):
         for _ in range(20):
             try:
                 child_state = state.read_text().split()[2]
-            except FileNotFoundError:
-                # The runner's reaper may remove /proc/PID between polls.
+            except (FileNotFoundError, ProcessLookupError):
+                # Linux may reap the process before open or during the stat read.
                 break
             if child_state == "Z":
                 break

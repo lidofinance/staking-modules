@@ -160,7 +160,8 @@ class RunnerTest(unittest.TestCase):
                 # A dead orphan may await the container's init reaper; it cannot run or hold compiler resources.
                 try:
                     state = stat.read_text().split()[2]
-                except FileNotFoundError:
+                except (FileNotFoundError, ProcessLookupError):
+                    # A /proc task may disappear after open but before read completes.
                     break
                 if state == "Z":
                     break
