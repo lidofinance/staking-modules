@@ -30,6 +30,8 @@ property proved. Backend timeouts and analysis failures are unresolved work.
 The machine-readable inventory is [`suites.json`](suites.json). The rules live in
 [`specs/`](specs/); their comments and preconditions are part of the specification.
 See [`ASSUMPTIONS.md`](ASSUMPTIONS.md) before interpreting any result.
+The initial executed checks and remaining proof gates are recorded in
+[`STATUS.md`](STATUS.md).
 
 | Suite            | Intended properties                                                                                                               | Boundary                                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |

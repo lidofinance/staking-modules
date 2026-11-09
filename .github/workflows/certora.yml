@@ -68,7 +68,10 @@ jobs:
           chmod +x "$RUNNER_TEMP/solc"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Check orchestration safeguards
-        run: python -m unittest discover -s certora/tests -v
+        run: |
+          set -o pipefail
+          mkdir -p certora/results
+          python -m unittest discover -s certora/tests -v 2>&1 | tee certora/results/orchestration.log
       - name: Compile Solidity and typecheck every CVL suite
         run: python certora/run.py check
       - name: Run executable model and harness witnesses
@@ -83,7 +86,7 @@ jobs:
         with:
           name: certora-preparation
           path: certora/results/
-          if-no-files-found: error
+          if-no-files-found: warn
 
   prove:
     name: Cloud Prover (explicit dispatch only)

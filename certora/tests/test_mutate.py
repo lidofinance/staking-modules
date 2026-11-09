@@ -41,7 +41,12 @@ class ClassificationTests(unittest.TestCase):
         child_pid = int(result.stdout.strip())
         state = Path(f"/proc/{child_pid}/stat")
         for _ in range(20):
-            if not state.exists() or state.read_text().split()[2] == "Z":
+            try:
+                child_state = state.read_text().split()[2]
+            except FileNotFoundError:
+                # The runner's reaper may remove /proc/PID between polls.
+                break
+            if child_state == "Z":
                 break
             time.sleep(0.05)
         else:

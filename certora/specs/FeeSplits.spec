@@ -4,7 +4,11 @@
  *
  * These are transition properties, not a proof of Accounting's complete reward
  * claim flow. The pre-state bound splitCount(id) <= 10 is the reachable validated
- * configuration bound needed to fully unwind Solidity's old-array deletion.
+ * configuration bound on Solidity's old-array deletion. In solc 0.8.33 legacy
+ * optimized bytecode, deletion loops over 2 * oldLength storage words with a
+ * stride of 2, clearing both fields each iteration: at most 10 body iterations
+ * and 11 header checks. loop_iter=11 conservatively budgets the final guard;
+ * backend unwind assertions still need an actual Prover run.
  * Each post-update rule executes the real validator before observing payouts.
  * Payout totality is scoped to amount <= max_uint256 / 10000: the production
  * multiplication is checked and larger symbolic values may legitimately revert.
