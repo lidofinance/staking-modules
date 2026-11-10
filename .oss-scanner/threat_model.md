@@ -162,7 +162,7 @@ An actor intentionally exercising a privileged power is not a vulnerability sole
 
 ## 8. Build and offline tests
 
-The image installs the repository's Yarn dependencies and Foundry version from `.foundryref`, then compiles sources, scripts and tests while network access is available. The reviewed version uses Foundry `v1.5.1`, Solidity `0.8.33`, the Osaka EVM and optimizer runs `150`. Node follows the repository's major version 20, and Yarn is `4.1.1`. The final image retains `node_modules`, compiler binaries, artifacts and caches.
+The image installs the repository's Yarn dependencies and Foundry version from `.foundryref`, then compiles sources, scripts and tests while network access is available. The reviewed version uses Foundry `v1.5.1`, Solidity `0.8.33`, the Osaka EVM and optimizer runs `150`. Node follows the repository's major version 24, and Yarn is `4.1.1`. The final image retains `node_modules`, compiler binaries, artifacts and caches.
 
 The unit-test command from `Justfile`, with offline compiler resolution and without the image's `FOUNDRY_THREADS=4` build cap, is:
 

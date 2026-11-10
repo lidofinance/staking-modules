@@ -9,7 +9,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierBalanceProofTest from "../../../out/Verifier.t.sol/VerifierBalanceProofTest.json" assert { type: "json" };
+import VerifierBalanceProofTest from "../../../out/Verifier.t.sol/VerifierBalanceProofTest.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
 const MAX_VALIDATORS = 1_000;

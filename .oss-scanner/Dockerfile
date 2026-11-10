@@ -1,6 +1,6 @@
 # The scanner clones staking-modules, then builds this file with that checkout as the context.
 # Network access ends after the image is built. Keep dependencies, build artifacts and compiler caches.
-FROM node:20-bookworm-slim
+FROM node:24-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git python3 build-essential pkg-config unzip jq \
@@ -14,7 +14,7 @@ COPY . /src
 WORKDIR /src
 
 # The bundled Yarn release and lockfile pin the dependency install to Yarn 4.1.1.
-# Node 20 follows .nvmrc and CI; Verifier tests use Node FFI with these dependencies.
+# Node 24 follows .nvmrc and CI; Verifier tests use Node FFI with these dependencies.
 RUN corepack enable \
     && node .yarn/releases/yarn-4.1.1.cjs install --immutable
 
