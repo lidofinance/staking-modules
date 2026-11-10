@@ -69,5 +69,5 @@ RUN ln -sf /src/.yarn/releases/yarn-4.1.1.cjs /usr/local/bin/yarn \
     && ln -sf /src/.yarn/releases/yarn-4.1.1.cjs /usr/local/bin/yarnpkg \
     && yarn --version
 
-# Offline unit suite: forge test --offline --skip script --no-match-path 'test/fork/**'
+# Offline unit suite: env -u FOUNDRY_THREADS forge test --offline --skip script --no-match-path 'test/fork/**'
 # Fork/deployment suites need an Ethereum RPC endpoint and are not part of the offline smoke test.
