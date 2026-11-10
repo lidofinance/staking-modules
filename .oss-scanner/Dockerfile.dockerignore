@@ -1,0 +1,40 @@
+# Install dependencies and build caches inside the image, never copy host-generated versions.
+node_modules
+out
+cache
+broadcast
+coverage
+snapshots
+digest
+tmp
+localhost.json
+lcov.info
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.yarn/build-state.yml
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+ics_assessment/engagement/.cache
+
+# Local secrets and workstation files are not part of the review environment.
+**/.env
+**/.env.*
+**/.envrc
+!.env.sample
+!.envrc
+!ics_assessment/.env.sample
+.local.just
+.aws
+.ssh
+.gnupg
+.idea
+.vscode
+.direnv
+.wake
+**/.DS_Store
+
+# Keep tracked source, fixtures, deployment artifacts and Git metadata for offline review.
+# Yarn's committed release, configuration, patches and lockfile must remain in the context.
