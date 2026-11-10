@@ -4,6 +4,7 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IStETH } from "src/interfaces/IStETH.sol";
 import { FeeDistributor } from "src/FeeDistributor.sol";
@@ -68,8 +69,10 @@ contract InvariantAsserts is Test {
         if (skipLongForkTest()) return;
 
         bool assertZeroConfirmedBalances;
-        try ICSModule(address(csm)).getTopUpQueue() returns (bool enabled, uint256, uint256, uint256) {
+        uint256 depositableLimitByTopUpQueue = type(uint256).max;
+        try ICSModule(address(csm)).getTopUpQueue() returns (bool enabled, uint256 limit, uint256 length, uint256) {
             assertZeroConfirmedBalances = !enabled;
+            if (enabled) depositableLimitByTopUpQueue = limit > length ? limit - length : 0;
         } catch {}
 
         uint256 noCount = csm.getNodeOperatorsCount();
@@ -118,7 +121,8 @@ contract InvariantAsserts is Test {
             .getStakingModuleSummary();
         assertEq(totalExitedValidators, _totalExitedValidators, "assert total exited");
         assertEq(totalDepositedValidators, _totalDepositedValidators, "assert total deposited");
-        assertEq(totalDepositableValidators, _depositableValidatorsCount, "assert depositable");
+        uint256 expectedDepositableValidators = Math.min(totalDepositableValidators, depositableLimitByTopUpQueue);
+        assertEq(expectedDepositableValidators, _depositableValidatorsCount, "assert depositable");
 
         assertModuleTrackedBalances(csm);
     }

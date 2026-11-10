@@ -1,4 +1,3 @@
-import csv
 from collections import defaultdict
 
 import requests
@@ -12,9 +11,6 @@ from ics_assessment.config import (
     GALXE_API_URL,
     GALXE_LOYALTY_POINTS_PATH,
     GALXE_SPACE_ID,
-    GITPOAP_API_URL,
-    GITPOAP_EVENTS_PATH,
-    GITPOAP_HOLDERS_PATH,
     MAINNET_RPC_URL,
     MAINNET_CUTOFF_BLOCK,
     PROTOCOL_GUILD_FROM_BLOCK,
@@ -146,26 +142,6 @@ def sync_galxe() -> None:
     rows.sort(key=lambda row: row[0])
     write_csv(GALXE_LOYALTY_POINTS_PATH, ["Address", "Points"], rows)
     print(f"Wrote {len(rows)} Galxe rows to {GALXE_LOYALTY_POINTS_PATH}")
-
-
-def sync_gitpoap() -> None:
-    with GITPOAP_EVENTS_PATH.open("r", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        events = [(row["ID"], row["Name"]) for row in reader]
-
-    session = requests.Session()
-    session.mount("https://", requests.adapters.HTTPAdapter(max_retries=3))
-
-    rows: list[list[str | int]] = []
-    for event_id, event_name in events:
-        response = session.get(f"{GITPOAP_API_URL}/gitpoaps/{event_id}/addresses")
-        response.raise_for_status()
-        for address in sorted({addr.lower() for addr in response.json().get("addresses", [])}):
-            rows.append([address, event_id, event_name])
-
-    rows.sort(key=lambda row: (row[0], str(row[1])))
-    write_csv(GITPOAP_HOLDERS_PATH, ["Address", "EventID", "EventName"], rows)
-    print(f"Wrote {len(rows)} GitPOAP rows to {GITPOAP_HOLDERS_PATH}")
 
 
 def sync_protocol_guild() -> None:

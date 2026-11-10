@@ -8,18 +8,15 @@ import { Test } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { DeployParams } from "script/csm/DeployBase.s.sol";
-import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 import { VettedGate } from "src/VettedGate.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     DeployParams internal deployParams;
-    uint256 adminsCount;
 
     function setUp() public {
         Env memory env = envVars();
@@ -27,7 +24,6 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
         if (moduleType != ModuleType.Community) vm.skip(true, "Current deployment is not Community module type");
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
-        adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
 
@@ -61,12 +57,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl), "module proxy getter impl");
-        assertEq(ProxySlotUtils.getImplementation(address(module)), address(moduleImpl), "module proxy slot impl");
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "module proxy getter admin");
-        assertEq(ProxySlotUtils.getAdmin(address(module)), address(deployParams.proxyAdmin), "module proxy slot admin");
-        assertFalse(proxy.proxy__getIsOssified(), "module proxy ossified");
+        _assertProxy(address(module), address(moduleImpl), deployParams.proxyAdmin, "module");
     }
 }
 
@@ -79,44 +70,27 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     }
 
     function test_defaultCurve_scratch_onlyFull() public view {
-        _assertBondCurve(accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
+        _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
     }
 
     function test_legacyEaCurve_scratch_onlyFull() public view {
-        _assertBondCurve(accounting.DEFAULT_BOND_CURVE_ID() + 1, deployParams.legacyEaBondCurve);
+        _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID() + 1, deployParams.legacyEaBondCurve);
     }
 
     function test_identifiedCommunityStakersCurve_scratch_onlyFull() public view {
         uint256 identifiedCommunityStakersCurveId = vettedGate.curveId();
         assertEq(identifiedCommunityStakersCurveId, deployParams.identifiedCommunityStakersGateCurveId);
-        _assertBondCurve(identifiedCommunityStakersCurveId, deployParams.identifiedCommunityStakersGateBondCurve);
+        _assertBondCurve(
+            accounting,
+            identifiedCommunityStakersCurveId,
+            deployParams.identifiedCommunityStakersGateBondCurve
+        );
     }
 
     function test_identifiedDVTClusterCurve_scratch_onlyFull() public view {
         uint256 identifiedDVTClusterCurveId = deployParams.identifiedDVTClusterBondCurveId;
         assertEq(identifiedDVTClusterGate.curveId(), identifiedDVTClusterCurveId);
-        _assertBondCurve(identifiedDVTClusterCurveId, deployParams.identifiedDVTClusterBondCurve);
-    }
-
-    function _assertBondCurve(uint256 curveId, uint256[2][] storage expectedCurve) internal view {
-        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo(curveId);
-        assertEq(curve.intervals.length, expectedCurve.length);
-        uint256 minBond;
-        for (uint256 i; i < curve.intervals.length; ++i) {
-            uint256 minKeysCount = expectedCurve[i][0];
-            uint256 trend = expectedCurve[i][1];
-            if (i == 0) {
-                minBond = trend;
-            } else {
-                uint256 prevMinKeysCount = expectedCurve[i - 1][0];
-                uint256 prevTrend = expectedCurve[i - 1][1];
-                minBond += trend + (minKeysCount - prevMinKeysCount - 1) * prevTrend;
-            }
-            assertEq(curve.intervals[i].minKeysCount, minKeysCount);
-            assertEq(curve.intervals[i].minBond, minBond);
-            assertEq(curve.intervals[i].trend, trend);
-            assertEq(accounting.getBondAmountByKeysCount(minKeysCount, curveId), minBond);
-        }
+        _assertBondCurve(accounting, identifiedDVTClusterCurveId, deployParams.identifiedDVTClusterBondCurve);
     }
 }
 
@@ -364,8 +338,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         VettedGate gate = _gate();
 
-        assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(gate), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         _checkPauseRole(address(gate), deployParams.resealManager, address(circuitBreaker));
 
@@ -402,20 +375,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
 
     function test_proxy_onlyFull() public view {
         VettedGate gate = _gate();
-        OssifiableProxy proxy = OssifiableProxy(payable(address(gate)));
-        assertEq(proxy.proxy__getImplementation(), address(vettedGateImpl), "vetted gate proxy getter impl");
-        assertEq(
-            ProxySlotUtils.getImplementation(address(gate)),
-            address(vettedGateImpl),
-            "vetted gate proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "vetted gate proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(gate)),
-            address(deployParams.proxyAdmin),
-            "vetted gate proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "vetted gate proxy ossified");
+        _assertProxy(address(gate), address(vettedGateImpl), deployParams.proxyAdmin, "vetted gate");
     }
 }
 
@@ -481,11 +441,6 @@ contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
 }
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
-    function test_configuration_afterVote() public {
-        address pauser = circuitBreaker.getPauser(address(module));
-        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
-    }
-
     function test_pausables_afterVote() public {
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
@@ -512,13 +467,7 @@ contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
-        if (deployParams.secondAdminAddress != address(0)) {
-            assertTrue(
-                permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress)
-            );
-        }
+        _checkAdminRole(address(permissionlessGate), deployParams.aragonAgent, deployParams.secondAdminAddress);
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }

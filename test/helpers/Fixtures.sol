@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
-import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
@@ -17,7 +16,6 @@ import { ICircuitBreaker } from "src/interfaces/ICircuitBreaker.sol";
 import { NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
 import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
-import { IPausableWithRoles } from "src/interfaces/IPausableWithRoles.sol";
 import { CSModule } from "src/CSModule.sol";
 import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { PermissionlessGate } from "src/PermissionlessGate.sol";
@@ -38,6 +36,7 @@ import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
+import { JsonBindings } from "script/utils/JsonBindings.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -45,6 +44,7 @@ import { IKernel } from "src/interfaces/IKernel.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
 
 import { Utilities } from "./Utilities.sol";
+import { Asserts } from "./Asserts.sol";
 import { MerkleTree } from "./MerkleTree.sol";
 
 import { LidoMock } from "./mocks/LidoMock.sol";
@@ -98,33 +98,9 @@ contract Fixtures is StdCheats, Test {
     }
 }
 
-contract DeploymentHelpers is Test {
+contract DeploymentHelpers is Asserts {
     /// @dev Placeholder address used until the real CircuitBreaker is deployed.
     address internal constant CIRCUIT_BREAKER_STUB = address(0x63697263756974627265616b6572);
-
-    function _checkPauseRole(address target, address resealManager, address cb) internal view {
-        IPausableWithRoles pausable = IPausableWithRoles(target);
-        IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
-        bytes32 role = pausable.PAUSE_ROLE();
-        uint256 expectedRoleMembers = 2;
-
-        assertTrue(accessControl.hasRole(role, resealManager), "reseal manager pause role");
-        assertTrue(accessControl.hasRole(role, cb), "circuit breaker pause role");
-
-        assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
-    }
-
-    function _checkAdminRole(address target, address admin, address secondAdmin) internal view {
-        IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
-        bytes32 role = bytes32(0); // DEFAULT_ADMIN_ROLE
-        uint256 expectedMembers = block.chainid == 1 ? 1 : 2;
-
-        assertTrue(accessControl.hasRole(role, admin), "missing admin default admin role");
-        if (secondAdmin != address(0)) {
-            assertTrue(accessControl.hasRole(role, secondAdmin), "missing second admin default admin role");
-        }
-        assertEq(accessControl.getRoleMemberCount(role), expectedMembers, "unexpected default admin role member count");
-    }
 
     struct Env {
         string RPC_URL;
@@ -443,27 +419,24 @@ contract DeploymentHelpers is Test {
 
     function parseDeployParams(string memory deployConfigPath) internal view returns (DeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+        return JsonBindings.deserializeDeployParams(config, ".DeployParams");
     }
 
     function parseDeployParams0x02(string memory deployConfigPath) internal view returns (DeployCSM0x02Params memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployCSM0x02Params));
+        return JsonBindings.deserializeDeployCSM0x02Params(config, ".DeployParams");
     }
 
     function parseCuratedDeployParams(
         string memory deployConfigPath
     ) internal view returns (CuratedDeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".CuratedDeployParams"), (CuratedDeployParams));
+        return JsonBindings.deserializeCuratedDeployParams(config, ".CuratedDeployParams");
     }
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
         string memory config = vm.readFile(deployConfigPath);
-        CuratedDeployParams memory src = abi.decode(
-            vm.parseJsonBytes(config, ".CuratedDeployParams"),
-            (CuratedDeployParams)
-        );
+        CuratedDeployParams memory src = JsonBindings.deserializeCuratedDeployParams(config, ".CuratedDeployParams");
         // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
         // Lido addresses
         dst.lidoLocatorAddress = src.lidoLocatorAddress;
@@ -552,9 +525,9 @@ contract DeploymentHelpers is Test {
         if (bytes(config).length == 0) return params;
 
         if (vm.keyExistsJson(config, ".CuratedModule")) {
-            CuratedDeployParams memory decoded = abi.decode(
-                vm.parseJsonBytes(config, ".CuratedDeployParams"),
-                (CuratedDeployParams)
+            CuratedDeployParams memory decoded = JsonBindings.deserializeCuratedDeployParams(
+                config,
+                ".CuratedDeployParams"
             );
             return _fillCommonFromCurated(params, decoded);
         } else {
@@ -565,13 +538,13 @@ contract DeploymentHelpers is Test {
                 vettedGate == address(0) &&
                 vettedGateImpl == address(0);
             if (isCsm0x02) {
-                DeployCSM0x02Params memory decoded = abi.decode(
-                    vm.parseJsonBytes(config, ".DeployParams"),
-                    (DeployCSM0x02Params)
+                DeployCSM0x02Params memory decoded = JsonBindings.deserializeDeployCSM0x02Params(
+                    config,
+                    ".DeployParams"
                 );
                 return _fillCommonFromCommunity0x02(params, decoded);
             } else {
-                DeployParams memory decoded = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+                DeployParams memory decoded = JsonBindings.deserializeDeployParams(config, ".DeployParams");
                 return _fillCommonFromCommunity(params, decoded);
             }
         }
@@ -696,7 +669,6 @@ contract DeploymentHelpers is Test {
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
         params.bondLockPeriod = decoded.bondLockPeriod;
@@ -743,14 +715,7 @@ contract DeploymentHelpers is Test {
     }
 }
 
-interface ILidoLegacyDeposit {
-    function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
-}
-
 abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
-    uint256 internal constant STAKING_ROUTER_OLD_CONTRACT_VERSION = 3;
-    uint256 internal constant STAKING_ROUTER_NEW_CONTRACT_VERSION = STAKING_ROUTER_OLD_CONTRACT_VERSION + 1;
-
     enum ModuleType {
         Unknown,
         Community,
@@ -796,14 +761,6 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     address[] public curatedGates;
 
     error ModuleNotFound();
-
-    function _isStakingRouterUpgraded() internal view returns (bool) {
-        return stakingRouter.getContractVersion() >= STAKING_ROUTER_NEW_CONTRACT_VERSION;
-    }
-
-    function _legacyLidoDeposit(uint256 depositsCount, uint256 moduleId, bytes memory depositCalldata) internal {
-        ILidoLegacyDeposit(address(lido)).deposit(depositsCount, moduleId, depositCalldata);
-    }
 
     function initializeFromDeployment() public {
         Env memory env = envVars();
@@ -1053,6 +1010,8 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
     Accounting internal accounting;
     IStakingRouter internal stakingRouter;
 
+    error NotEnoughKeysDeposited(uint256 nodeOperatorId, uint256 deposited, uint256 expected);
+
     constructor(CSModule module_, Accounting accounting_, IStakingRouter stakingRouter_) {
         module = module_;
         accounting = accounting_;
@@ -1077,11 +1036,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
             if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) return noId;
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        vm.startPrank(address(stakingRouter));
-        // potentially time-consuming or reverting due to block/tx gas limit
-        module.obtainDepositData(depositableValidatorsCount, "");
-        vm.stopPrank();
+        _depositKeys(noId, keysCount);
     }
 
     function getDepositedNodeOperatorWithSequentialActiveKeys(
@@ -1105,12 +1060,21 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
             }
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+        _depositKeys(noId, keysCount);
+        return (noId, 0);
+    }
+
+    /// @dev Deposits all depositable keys of the module, and ensures `keysCount` of them belong to `noId`.
+    function _depositKeys(uint256 noId, uint256 keysCount) internal virtual {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
         module.obtainDepositData(depositableValidatorsCount, "");
         vm.stopPrank();
-        return (noId, 0);
+
+        // Deposits might be capped, e.g. by the top-up queue capacity, leaving keys of `noId` undeposited.
+        uint256 deposited = module.getNodeOperator(noId).totalDepositedKeys;
+        if (deposited < keysCount) revert NotEnoughKeysDeposited(noId, deposited, keysCount);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal virtual returns (uint256 nodeOperatorId);
@@ -1192,6 +1156,22 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
         (noId, keyIndex) = module.getTopUpQueueItem(0);
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
+    }
+
+    function _depositKeys(uint256 noId, uint256 keysCount) internal override {
+        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
+        // Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
+        // would leave the freshly added keys undeposited.
+        if (enabled && limit < type(uint8).max) {
+            bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
+            if (!module.hasRole(role, address(this))) {
+                address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+                vm.prank(admin);
+                module.grantRole(role, address(this));
+            }
+            module.setTopUpQueueLimit(type(uint8).max);
+        }
+        super._depositKeys(noId, keysCount);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {

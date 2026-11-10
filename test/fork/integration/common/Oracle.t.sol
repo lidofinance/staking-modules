@@ -52,14 +52,8 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 moduleId = findModule();
         (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
 
-        bool isStakingRouterUpgraded = _isStakingRouterUpgraded();
-        if (isStakingRouterUpgraded) {
-            vm.prank(locator.depositSecurityModule());
-            stakingRouter.deposit(moduleId, "");
-        } else {
-            vm.prank(locator.depositSecurityModule());
-            _legacyLidoDeposit(keysCount, moduleId, "");
-        }
+        vm.prank(locator.depositSecurityModule());
+        stakingRouter.deposit(moduleId, "");
 
         if (module.getNodeOperator(nodeOperatorId).totalDepositedKeys == 0) {
             // Skip: this scenario requires at least one deposited key for the selected node operator.

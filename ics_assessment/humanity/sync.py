@@ -9,7 +9,13 @@ from ics_assessment.config import (
     GROUP_ADDRESS,
     GROUP_CREATION_BLOCK,
 )
-from ics_assessment.sync import GROUP_ABI, HUB_ABI, SAFE_ABI, write_lines
+from ics_assessment.sync import (
+    GROUP_ABI,
+    HUB_ABI,
+    SAFE_ABI,
+    get_event_logs,
+    write_lines,
+)
 
 
 def sync_circles() -> None:
@@ -22,11 +28,13 @@ def sync_circles() -> None:
         block_identifier=GNOSIS_CUTOFF_BLOCK
     )
     hub_contract = w3.eth.contract(address=w3.to_checksum_address(hub_address), abi=HUB_ABI)
-    events = hub_contract.events.Trust.create_filter(
-        from_block=GROUP_CREATION_BLOCK,
-        to_block=GNOSIS_CUTOFF_BLOCK,
+    events = get_event_logs(
+        hub_contract.events.Trust(),
+        GROUP_CREATION_BLOCK,
+        GNOSIS_CUTOFF_BLOCK,
+        label="Circles Trust",
         argument_filters={"truster": w3.to_checksum_address(GROUP_ADDRESS)},
-    ).get_all_entries()
+    )
     trustees = {
         event.args.trustee
         for event in events
