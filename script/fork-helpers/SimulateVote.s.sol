@@ -113,6 +113,16 @@ contract SimulateVote is Script, ForkHelpersCommon {
             circuitBreaker.registerPauser(address(identifiedDVTClusterGate), cbPauser);
         }
 
+        if (moduleType == ModuleType.Community0x02) {
+            (, uint256 topUpQueueLimit, , ) = module.getTopUpQueue();
+            // Hoodi and local-devnet deployments already use this limit.
+            if (topUpQueueLimit != 32) {
+                module.grantRole(module.MANAGE_TOP_UP_QUEUE_ROLE(), agent);
+                module.setTopUpQueueLimit(32);
+                module.revokeRole(module.MANAGE_TOP_UP_QUEUE_ROLE(), agent);
+            }
+        }
+
         vm.stopBroadcast();
     }
 

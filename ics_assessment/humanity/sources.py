@@ -5,7 +5,11 @@ import math
 
 import requests
 
-from ics_assessment.config import HUMAN_PASSPORT_API_URL, HUMAN_PASSPORT_SCORER_ID
+from ics_assessment.config import (
+    HUMAN_PASSPORT_API_URL,
+    HUMAN_PASSPORT_CUTOFF_DATE,
+    HUMAN_PASSPORT_SCORER_ID,
+)
 from ics_assessment.data_utils import read_csv_rows
 
 
@@ -44,9 +48,17 @@ def fetch_human_passport_max(addresses: set[str], api_key: str | None) -> tuple[
         )
         headers = {"X-API-Key": api_key}
         time.sleep(8)
-        response = requests.get(url, headers=headers)
+        response = requests.get(
+            url,
+            headers=headers,
+            params={"created_at": HUMAN_PASSPORT_CUTOFF_DATE},
+            timeout=60,
+        )
+        # The history endpoint returns 404 if the address had no score at cutoff.
+        if response.status_code == 404:
+            continue
         response.raise_for_status()
-        payload = response.json() if getattr(response, "content", None) else response.json()
+        payload = response.json()
         score = math.floor(float(payload.get("score", 0) or 0))
         if score > best_score:
             best_score = score

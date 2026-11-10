@@ -12,7 +12,7 @@ def make_reports(day_epochs, statuses_per_frame, version="v1"):
     epoch0 = 10_000
     for i, status_map in enumerate(statuses_per_frame):
         start = epoch0 + i * day_epochs
-        end = start + day_epochs
+        end = start + day_epochs - 1
         cid = f"CID{i+1}"
         meta = mod.ReportMeta(cid, version=version, start_epoch=start, end_epoch=end)
         rep = {"status": status_map}
@@ -183,3 +183,36 @@ def test_exact_boundary_3_days(monkeypatch):
     reports = make_reports(day_epochs, statuses, version="v1")
     eligible = mod.evaluate_eligibility_window(reports, min_days=3)
     assert "7" in eligible
+
+
+def test_exact_boundary_53_days_across_inclusive_producer_frames():
+    reports = []
+    start_epoch = 100_000
+
+    # Hoodi reports encode the first and last included epochs. These eleven
+    # frames contain exactly 11,925 epochs, or 53 days.
+    for i, epoch_count in enumerate([1084] * 10 + [1085]):
+        end_epoch = start_epoch + epoch_count - 1
+        report = {
+            "_ver": 1,
+            "frames": [
+                {
+                    "frame": [start_epoch, end_epoch],
+                    "operators": {
+                        "96": {
+                            "validators": {
+                                "validator": {
+                                    "distributed_rewards": 1,
+                                }
+                            }
+                        }
+                    },
+                }
+            ],
+        }
+        mod.append_report_frames(reports, f"CID{i + 1}", report)
+        start_epoch = end_epoch + 1
+
+    eligible = mod.evaluate_eligibility_window(reports, min_days=53)
+
+    assert "96" in eligible

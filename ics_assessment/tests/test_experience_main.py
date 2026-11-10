@@ -34,6 +34,8 @@ def mod(tmp_path):
 
 def _write_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.name.startswith("node_operator_owners_"):
+        value = {operator_id: [addr] for operator_id, addr in value.items()}
     path.write_text(json.dumps(value))
 
 
@@ -124,6 +126,35 @@ def test_csm_testnet_reads_eligible_file_and_scores(mod):
     _write_json(mod.sources.eligible_addresses_holesky_path, [])
     score = mod.evaluator._csm_testnet_score({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
     assert score == mod.EXPERIENCE_SCORES["csm-testnet"]
+
+
+@pytest.mark.parametrize("eligible_id", ["41", "42"])
+def test_csm_testnet_checks_all_ids_for_shared_owner(mod, eligible_id):
+    address = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    _write_json(
+        mod.sources.node_operator_owners_hoodi_path,
+        {"41": address, "42": address},
+    )
+    _write_json(mod.sources.eligible_node_operators_hoodi_path, [eligible_id])
+    _write_json(mod.sources.eligible_addresses_holesky_path, [])
+
+    score = mod.evaluator._csm_testnet_score({address})
+
+    assert score == mod.EXPERIENCE_SCORES["csm-testnet"]
+
+
+@pytest.mark.parametrize("eligible_id", ["41", "42"])
+def test_csm_mainnet_checks_all_ids_for_shared_owner(mod, eligible_id):
+    address = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    _write_json(
+        mod.sources.node_operator_owners_mainnet_path,
+        {"41": address, "42": address},
+    )
+    _write_json(mod.sources.eligible_node_operators_mainnet_path, [eligible_id])
+
+    score = mod.evaluator._csm_mainnet_score({address})
+
+    assert score == mod.EXPERIENCE_SCORES["csm-mainnet"]
 
 
 def test_csm_testnet_reads_eligible_file_with_circles_bonus(mod):

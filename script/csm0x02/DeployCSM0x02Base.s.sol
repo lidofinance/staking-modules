@@ -25,6 +25,7 @@ import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.so
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
+import { JsonBindings } from "../utils/JsonBindings.sol";
 import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
@@ -60,11 +61,11 @@ struct DeployCSM0x02Params {
     uint256 minBondLockPeriod;
     uint256 maxBondLockPeriod;
     uint256 bondLockPeriod;
-    address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
+    address rewindTopUpQueueRoleHolder;
     uint8 topUpQueueLimit;
     // ParametersRegistry
     uint256 queueLowestPriority;
@@ -356,8 +357,6 @@ abstract contract DeployCSM0x02Base is Script {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
-
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
                 config.penaltiesManager
@@ -365,7 +364,7 @@ abstract contract DeployCSM0x02Base is Script {
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), config.generalDelayedPenaltyReporter);
-            csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), config.setResetBondCurveAddress);
+            csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), config.rewindTopUpQueueRoleHolder);
             csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), config.easyTrackEVMScriptExecutor);
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));
@@ -432,7 +431,7 @@ abstract contract DeployCSM0x02Base is Script {
             deployJson.set("VettedGateImpl", address(0));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("CircuitBreaker", circuitBreaker);
-            deployJson.set("DeployParams", abi.encode(config));
+            deployJson.str = JsonBindings.serialize(config, deployJson.ref, "DeployParams");
             deployJson.set("git-ref", gitRef);
             vm.writeJson(deployJson.str, _deployJsonFilename());
         }

@@ -7,9 +7,9 @@ import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 
-import { CSMIntegrationBase } from "../common/ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase } from "./ModuleTypeBase.sol";
 
-contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
+abstract contract DepositInfoRefreshTestBase is ModuleTypeBase {
     address internal nodeOperator;
     uint256 internal defaultNoId;
     uint256 internal initialKeysCount = 5;
@@ -19,7 +19,7 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
@@ -29,16 +29,18 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
         vm.resumeGasMetering();
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         _setUpModule();
 
-        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
-        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
+        address moduleAdmin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+        bytes32 moduleAdminRole = module.DEFAULT_ADMIN_ROLE();
+        vm.prank(moduleAdmin);
+        module.grantRole(moduleAdminRole, address(this));
 
-        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
-        accounting.grantRole(accounting.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
+        address accountingAdmin = accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0);
+        bytes32 accountingAdminRole = accounting.DEFAULT_ADMIN_ROLE();
+        vm.prank(accountingAdmin);
+        accounting.grantRole(accountingAdminRole, address(this));
 
         handleStakingLimit();
         handleBunkerMode();
@@ -50,7 +52,6 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
     function test_depositInfoRefreshPipeline() public assertInvariants {
         ICSModule csm = ICSModule(address(module));
         uint256 curveId = accounting.getBondCurveId(defaultNoId);
-        // Update bond curve to trigger full deposit info refresh
         IBondCurve.BondCurveData memory curveData = accounting.getBondCurve(defaultNoId);
         IBondCurve.BondCurveIntervalInput[] memory newCurve = new IBondCurve.BondCurveIntervalInput[](
             curveData.intervals.length
@@ -66,19 +67,19 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
         accounting.grantRole(manageCurvesRole, address(this));
         accounting.updateBondCurve(curveId, newCurve);
 
-        // Deposit info is now stale
         uint256 toUpdate = module.getNodeOperatorDepositInfoToUpdateCount();
-        assertTrue(toUpdate > 0, "Deposit info should need update after curve change");
+        assertGt(toUpdate, 0, "deposit info should need update after curve change");
 
-        // cleanDepositQueue should revert while deposit info is stale
         vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
         csm.cleanDepositQueue(1);
 
         integrationHelpers.runFullBatchDepositInfoUpdate();
 
-        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0, "All operators should be updated");
-
-        // cleanDepositQueue should now succeed
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0, "all operators should be updated");
         csm.cleanDepositQueue(1);
     }
 }
+
+contract DepositInfoRefreshTestCSM is DepositInfoRefreshTestBase, CSMIntegrationBase {}
+
+contract DepositInfoRefreshTestCSM0x02 is DepositInfoRefreshTestBase, CSM0x02IntegrationBase {}
