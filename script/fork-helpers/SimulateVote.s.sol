@@ -204,7 +204,11 @@ contract SimulateVote is Script, ForkHelpersCommon {
         _setUp();
         if (moduleType != ModuleType.Curated) revert WrongModuleType();
 
-        address enabler = parseCuratedDeployParams(envVars().DEPLOY_CONFIG).topUpAllocationEnabler;
+        Env memory env = envVars();
+        string memory config = vm.readFile(env.DEPLOY_CONFIG);
+        CuratedDeployParams memory params = parseCuratedDeployParams(env.DEPLOY_CONFIG);
+        address previousVerifier = vm.parseJsonAddress(config, ".Verifier");
+        address curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
 
         OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
         vm.startBroadcast(_prepareProxyAdmin(address(proxy)));
@@ -212,9 +216,20 @@ contract SimulateVote is Script, ForkHelpersCommon {
         proxy.proxy__upgradeToAndCall(address(curatedModuleImpl), abi.encodeCall(CuratedModule.finalizeUpgradeV2, ()));
         vm.stopBroadcast();
 
+        bytes32 verifierRole = curatedModule.VERIFIER_ROLE();
+        bytes32 reportRole = curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
+
         vm.startBroadcast(_prepareAdmin(address(curatedModule)));
         // 2. Grant the committee permission to enable top-up allocation.
-        curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), enabler);
+        curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), params.topUpAllocationEnabler);
+        // 3. Revoke the verifier roles from the previous Verifier.
+        curatedModule.revokeRole(verifierRole, previousVerifier);
+        curatedModule.revokeRole(reportRole, previousVerifier);
+        // 4. Grant the verifier roles to CuratedVerifier.
+        curatedModule.grantRole(verifierRole, curatedVerifier);
+        curatedModule.grantRole(reportRole, curatedVerifier);
+        // 5. Register the CuratedVerifier pauser in CircuitBreaker.
+        circuitBreaker.registerPauser(curatedVerifier, params.circuitBreakerPauser);
         vm.stopBroadcast();
     }
 
