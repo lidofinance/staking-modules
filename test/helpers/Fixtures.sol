@@ -379,8 +379,11 @@ contract DeploymentHelpers is Asserts {
         deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
 
-        deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        vm.label(deploymentConfig.verifier, "curatedVerifier");
+        // A scratch deployment has only `.CuratedVerifier`; an upgrade artifact also keeps the previous `.Verifier`.
+        if (vm.keyExistsJson(config, ".Verifier")) {
+            deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
+            vm.label(deploymentConfig.verifier, "curatedVerifier");
+        }
 
         if (vm.keyExistsJson(config, ".CuratedVerifier")) {
             deploymentConfig.curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");

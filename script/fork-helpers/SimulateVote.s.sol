@@ -228,7 +228,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
         // 4. Grant the verifier roles to CuratedVerifier.
         curatedModule.grantRole(verifierRole, curatedVerifier);
         curatedModule.grantRole(reportRole, curatedVerifier);
-        // 5. Register the CuratedVerifier pauser in CircuitBreaker.
+        // 5. Unregister the previous Verifier pauser in CircuitBreaker.
+        circuitBreaker.registerPauser(previousVerifier, address(0));
+        // 6. Register the CuratedVerifier pauser in CircuitBreaker.
         circuitBreaker.registerPauser(curatedVerifier, params.circuitBreakerPauser);
         vm.stopBroadcast();
     }

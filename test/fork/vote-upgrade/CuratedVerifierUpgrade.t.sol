@@ -102,9 +102,15 @@ contract CuratedVerifierUpgradeTest is Test, DeploymentFixtures {
 
     function test_circuitBreakerPauser() public {
         vm.selectFork(forkIdBeforeUpgrade);
+        assertEq(
+            circuitBreaker.getPauser(previousVerifier),
+            deployParams.circuitBreakerPauser,
+            "previous pauser before"
+        );
         assertEq(circuitBreaker.getPauser(address(curatedVerifier)), address(0), "pauser before");
 
         vm.selectFork(forkIdAfterUpgrade);
+        assertEq(circuitBreaker.getPauser(previousVerifier), address(0), "previous pauser");
         assertEq(circuitBreaker.getPauser(address(curatedVerifier)), deployParams.circuitBreakerPauser, "pauser");
     }
 
