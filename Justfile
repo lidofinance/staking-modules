@@ -70,13 +70,17 @@ _copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
         ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}} \
         {{dest_path}}
 
-_finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_config_path:
-    just _copy-broadcast-json "{{script_name}}" "{{rpc_url}}" "{{dry_prefix}}" "{{json_name}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
-    just _merge-external-libraries "{{deploy_config_path}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
+_finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_config_path transactions_name="transactions.json":
+    just _copy-broadcast-json "{{script_name}}" "{{rpc_url}}" "{{dry_prefix}}" "{{json_name}}" "$(dirname "{{deploy_config_path}}")/{{transactions_name}}"
+    just _merge-external-libraries "{{deploy_config_path}}" "$(dirname "{{deploy_config_path}}")/{{transactions_name}}"
 
 _copy-file src_path dest_path:
     mkdir -p "$(dirname "{{dest_path}}")"
     cp "{{src_path}}" "{{dest_path}}"
+
+# Keeps the destination if it exists, e.g. to add a deployment to an upgrade config prepared by another script.
+_copy-file-if-missing src_path dest_path:
+    [ -f "{{dest_path}}" ] || just _copy-file "{{src_path}}" "{{dest_path}}"
 
 _merge-external-libraries deploy_config_path transactions_path:
     #!/usr/bin/env bash
