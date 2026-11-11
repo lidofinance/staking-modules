@@ -136,7 +136,7 @@ contract CuratedVerifier is ICuratedVerifier, AccessControlEnumerable, PausableW
     }
 
     /// @inheritdoc ICuratedVerifier
-    function processWithdrawn(ProcessWithdrawnInput calldata data) external whenResumed {
+    function processWithdrawnProof(ProcessWithdrawnInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
 
         {
@@ -148,10 +148,7 @@ contract CuratedVerifier is ICuratedVerifier, AccessControlEnumerable, PausableW
             revert InvalidWithdrawalAddress();
         }
 
-        // A slashed validator stays slashed, so the check is final for the proven state and any later one.
         if (data.validator.object.slashed) revert ValidatorIsSlashed();
-        // Once the withdrawable epoch is reached, the validator can be neither slashed nor penalized, and a pending
-        // consolidation of the validator has been processed.
         if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }

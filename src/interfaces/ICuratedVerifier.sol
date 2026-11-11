@@ -120,7 +120,7 @@ interface ICuratedVerifier {
     ///         withdrawn. Covers both regular exits and outgoing consolidations.
     /// @notice The exit balance is reported as the confirmed key balance plus `MIN_ACTIVATION_BALANCE`.
     /// @param data @see ProcessWithdrawnInput
-    function processWithdrawn(ProcessWithdrawnInput calldata data) external;
+    function processWithdrawnProof(ProcessWithdrawnInput calldata data) external;
 
     /// @notice Verify a validator's balance proof from a recent beacon block and sync the key added balance.
     /// @param data The balance proof input containing recent block header, validator witness, and balance witness.

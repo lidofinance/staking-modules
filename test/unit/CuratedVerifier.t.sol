@@ -221,23 +221,23 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
         _setMocks();
     }
 
-    function test_processWithdrawn_HappyPath() public {
+    function test_processWithdrawnProof_HappyPath() public {
         vm.expectCall(
             address(module),
             abi.encodeCall(IBaseModule.reportRegularWithdrawnValidators, (_expectedInfos(32 ether)))
         );
 
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_HappyPath_ConsolidatedValidator() public {
+    function test_processWithdrawnProof_HappyPath_ConsolidatedValidator() public {
         _loadFixture(CONSOLIDATED_VALIDATOR);
         _setMocks();
 
-        test_processWithdrawn_HappyPath();
+        test_processWithdrawnProof_HappyPath();
     }
 
-    function test_processWithdrawn_HappyPath_AtWithdrawableEpoch() public {
+    function test_processWithdrawnProof_HappyPath_AtWithdrawableEpoch() public {
         _loadFixture(AT_WITHDRAWABLE_EPOCH_VALIDATOR);
         _setMocks();
 
@@ -247,10 +247,10 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
             "Validator should reach the withdrawable epoch at the epoch of the state"
         );
 
-        test_processWithdrawn_HappyPath();
+        test_processWithdrawnProof_HappyPath();
     }
 
-    function test_processWithdrawn_HappyPath_ExitBalanceIncludesConfirmedBalance() public {
+    function test_processWithdrawnProof_HappyPath_ExitBalanceIncludesConfirmedBalance() public {
         vm.mockCall(
             address(module),
             abi.encodeCall(
@@ -265,10 +265,10 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
             abi.encodeCall(IBaseModule.reportRegularWithdrawnValidators, (_expectedInfos(132 ether)))
         );
 
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_HappyPath_ForkBeforePivot() public {
+    function test_processWithdrawnProof_HappyPath_ForkBeforePivot() public {
         Slot slot = fixture.data.recentBlock.header.slot;
         _deployVerifier(
             ICuratedVerifier.GIndices({
@@ -283,10 +283,10 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
             slot.inc()
         );
 
-        test_processWithdrawn_HappyPath();
+        test_processWithdrawnProof_HappyPath();
     }
 
-    function test_processWithdrawn_HappyPath_ForkAtPivot() public {
+    function test_processWithdrawnProof_HappyPath_ForkAtPivot() public {
         Slot slot = fixture.data.recentBlock.header.slot;
         _deployVerifier(
             ICuratedVerifier.GIndices({
@@ -301,19 +301,19 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
             slot
         );
 
-        test_processWithdrawn_HappyPath();
+        test_processWithdrawnProof_HappyPath();
     }
 
-    function test_processWithdrawn_RevertWhen_RecentBlockSlotUnsupported() public {
+    function test_processWithdrawnProof_RevertWhen_RecentBlockSlotUnsupported() public {
         fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(ICuratedVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_InvalidBlockHeader() public {
+    function test_processWithdrawnProof_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.recentBlock.rootsTimestamp),
@@ -321,46 +321,46 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
         );
 
         vm.expectRevert(ICuratedVerifier.InvalidBlockHeader.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_RootNotFound() public {
+    function test_processWithdrawnProof_RevertWhen_RootNotFound() public {
         vm.mockCallRevert(verifier.BEACON_ROOTS(), abi.encode(fixture.data.recentBlock.rootsTimestamp), "");
 
         vm.expectRevert(ICuratedVerifier.RootNotFound.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_InvalidWithdrawalAddress() public {
+    function test_processWithdrawnProof_RevertWhen_InvalidWithdrawalAddress() public {
         fixture.data.validator.object.withdrawalCredentials = someBytes32();
 
         vm.expectRevert(ICuratedVerifier.InvalidWithdrawalAddress.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_ValidatorIsSlashed() public {
+    function test_processWithdrawnProof_RevertWhen_ValidatorIsSlashed() public {
         fixture.data.validator.object.slashed = true;
 
         vm.expectRevert(ICuratedVerifier.ValidatorIsSlashed.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_ValidatorIsNotWithdrawable() public {
+    function test_processWithdrawnProof_RevertWhen_ValidatorIsNotWithdrawable() public {
         fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
 
         vm.expectRevert(ICuratedVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_ValidatorIsNotExiting() public {
+    function test_processWithdrawnProof_RevertWhen_ValidatorIsNotExiting() public {
         fixture.data.validator.object.exitEpoch = type(uint64).max;
         fixture.data.validator.object.withdrawableEpoch = type(uint64).max;
 
         vm.expectRevert(ICuratedVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_InvalidPublicKey() public {
+    function test_processWithdrawnProof_RevertWhen_InvalidPublicKey() public {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
@@ -372,28 +372,28 @@ contract CuratedVerifierWithdrawnTest is CuratedVerifierTestBase {
         );
 
         vm.expectRevert(ICuratedVerifier.InvalidPublicKey.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_InvalidValidatorObject() public {
+    function test_processWithdrawnProof_RevertWhen_InvalidValidatorObject() public {
         fixture.data.validator.object.effectiveBalance += 1;
 
         vm.expectRevert(SSZ.InvalidProof.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_InvalidValidatorIndex() public {
+    function test_processWithdrawnProof_RevertWhen_InvalidValidatorIndex() public {
         fixture.data.validator.index += 1;
 
         vm.expectRevert(SSZ.InvalidProof.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
-    function test_processWithdrawn_RevertWhen_Paused() public {
+    function test_processWithdrawnProof_RevertWhen_Paused() public {
         _pause();
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processWithdrawn(fixture.data);
+        verifier.processWithdrawnProof(fixture.data);
     }
 
     function _setMocks() internal {
