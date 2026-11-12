@@ -12,7 +12,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import CuratedVerifierWithdrawnTest from "../../../out/CuratedVerifier.t.sol/CuratedVerifierWithdrawnTest.json" assert { type: "json" };
+import CuratedVerifierWithdrawnTest from "../../../out/CuratedVerifier.t.sol/CuratedVerifierWithdrawnTest.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
