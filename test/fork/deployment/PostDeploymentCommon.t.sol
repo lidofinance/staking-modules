@@ -426,7 +426,6 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
 
     function test_immutables() public view {
         assertEq(address(ejector.MODULE()), address(module));
-        assertEq(ejector.stakingModuleId(), 0);
         assertEq(address(ejector.STRIKES()), address(strikes));
     }
 

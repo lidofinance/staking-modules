@@ -4,10 +4,9 @@
 pragma solidity 0.8.33;
 
 import { IBaseModule } from "./IBaseModule.sol";
-import { IExitTypes } from "./IExitTypes.sol";
 import { ITriggerableWithdrawalsGateway } from "./ITriggerableWithdrawalsGateway.sol";
 
-interface IEjector is IExitTypes {
+interface IEjector {
     error SigningKeysInvalidOffset();
     error AlreadyWithdrawn();
     error ZeroAdminAddress();
@@ -19,14 +18,10 @@ interface IEjector is IExitTypes {
     error NothingToEject();
     error DuplicateKeyIndex();
     error ZeroRefundRecipient();
-    error StakingModuleIdNotFound();
 
     event VoluntaryEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
     event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
-    event StakingModuleIdCached(uint256 stakingModuleId);
-
-    function stakingModuleId() external view returns (uint256);
 
     function MODULE() external view returns (IBaseModule);
 

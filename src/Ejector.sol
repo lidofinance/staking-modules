@@ -6,20 +6,17 @@ pragma solidity 0.8.33;
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
-import { ExitTypes } from "./abstract/ExitTypes.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
 import { IEjector } from "./interfaces/IEjector.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
-import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
-import { ITriggerableWithdrawalsGateway, ValidatorData } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
+import { ITriggerableWithdrawalsGateway, WithdrawalIntent } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
 
-contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRoles, AssetRecoverer {
+contract Ejector is IEjector, AccessControlEnumerable, PausableWithRoles, AssetRecoverer {
     IBaseModule public immutable MODULE;
     address public immutable STRIKES;
-    uint256 public stakingModuleId;
 
     modifier onlyStrikes() {
         _onlyStrikes();
@@ -50,9 +47,8 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         // Default to sender if no refund recipient is specified
         refundRecipient = _msgSenderIfEmpty(refundRecipient);
 
-        uint256 moduleId = _getOrCacheStakingModuleId();
         uint256 totalDepositedKeys = MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys;
-        ValidatorData[] memory exitsData = new ValidatorData[](keyIndices.length);
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](keyIndices.length);
         TransientUintUintMap seen = TransientUintUintMapLib.create();
         for (uint256 i = 0; i < keyIndices.length; i++) {
             uint256 keyIndex = keyIndices[i];
@@ -69,7 +65,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
             // there are no active keys available
             if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
             bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);
-            exitsData[i] = ValidatorData({ stakingModuleId: moduleId, nodeOperatorId: nodeOperatorId, pubkey: pubkey });
+            intents[i] = WithdrawalIntent({ amount: 0, pubkey: pubkey });
             emit VoluntaryEjectionRequested({
                 nodeOperatorId: nodeOperatorId,
                 pubkey: pubkey,
@@ -78,11 +74,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         }
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
-            exitsData,
-            refundRecipient,
-            VOLUNTARY_EXIT_TYPE_ID
-        );
+        triggerableWithdrawalsGateway().triggerWithdrawals{ value: msg.value }(intents, refundRecipient);
     }
 
     /// @inheritdoc IEjector
@@ -101,10 +93,9 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         // active keys available
         if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
 
-        uint256 moduleId = _getOrCacheStakingModuleId();
-        ValidatorData[] memory exitsData = new ValidatorData[](1);
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](1);
         bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);
-        exitsData[0] = ValidatorData({ stakingModuleId: moduleId, nodeOperatorId: nodeOperatorId, pubkey: pubkey });
+        intents[0] = WithdrawalIntent({ amount: 0, pubkey: pubkey });
         emit BadPerformerEjectionRequested({
             nodeOperatorId: nodeOperatorId,
             pubkey: pubkey,
@@ -112,35 +103,12 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         });
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
-            exitsData,
-            refundRecipient,
-            STRIKES_EXIT_TYPE_ID
-        );
+        triggerableWithdrawalsGateway().triggerWithdrawals{ value: msg.value }(intents, refundRecipient);
     }
 
     /// @inheritdoc IEjector
     function triggerableWithdrawalsGateway() public view returns (ITriggerableWithdrawalsGateway) {
         return ITriggerableWithdrawalsGateway(MODULE.LIDO_LOCATOR().triggerableWithdrawalsGateway());
-    }
-
-    function _getOrCacheStakingModuleId() internal returns (uint256 moduleId) {
-        moduleId = stakingModuleId;
-        if (moduleId != 0) return moduleId;
-
-        IStakingRouter stakingRouter = IStakingRouter(MODULE.LIDO_LOCATOR().stakingRouter());
-        uint256[] memory stakingModuleIds = stakingRouter.getStakingModuleIds();
-        for (uint256 i = stakingModuleIds.length; i > 0; i--) {
-            uint256 id = stakingModuleIds[i - 1];
-            IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(id);
-            if (moduleInfo.stakingModuleAddress == address(MODULE)) {
-                stakingModuleId = id;
-                emit StakingModuleIdCached(id);
-                return id;
-            }
-        }
-
-        revert StakingModuleIdNotFound();
     }
 
     function _msgSenderIfEmpty(address input) internal view returns (address) {
