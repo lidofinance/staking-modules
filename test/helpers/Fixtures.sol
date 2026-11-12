@@ -210,6 +210,7 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
+        address curatedVerifier;
         address hashConsensus;
         address metaRegistry;
         address metaRegistryImpl;
@@ -378,8 +379,16 @@ contract DeploymentHelpers is Asserts {
         deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
 
-        deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        vm.label(deploymentConfig.verifier, "curatedVerifier");
+        // A scratch deployment has only `.CuratedVerifier`; an upgrade artifact also keeps the previous `.Verifier`.
+        if (vm.keyExistsJson(config, ".Verifier")) {
+            deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
+            vm.label(deploymentConfig.verifier, "curatedVerifier");
+        }
+
+        if (vm.keyExistsJson(config, ".CuratedVerifier")) {
+            deploymentConfig.curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
+            vm.label(deploymentConfig.curatedVerifier, "curatedVerifierV2");
+        }
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
@@ -852,7 +861,12 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        verifier = Verifier(deploymentConfig.verifier);
+        // `CuratedVerifier` replaces `Verifier` once deployed. Both share the role and pause interface used by the tests.
+        verifier = Verifier(
+            deploymentConfig.curatedVerifier == address(0)
+                ? deploymentConfig.verifier
+                : deploymentConfig.curatedVerifier
+        );
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());
