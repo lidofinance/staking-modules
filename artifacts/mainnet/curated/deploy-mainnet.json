@@ -603,7 +603,7 @@
     "0x773933F9db8964A17d62fb808f2EC7A2de4247CC"
   ],
   "CuratedModule": "0xDa5F930cE326EB5205085D66c72A4E79d60cB8C1",
-  "CuratedModuleImpl": "0x959fC67FE53c8A6C7a1AEd73430Aa07a36eD9337",
+  "CuratedModuleImpl": "0x02bEFd784c6C382a021774472563671Ae23980C0",
   "Ejector": "0xe181A377A2d2BDE9A83f1474BC3DB7A412de091E",
   "ExitPenalties": "0x004aFb7DAA7dEA20EbAaB75c9F4892C879FaCCe0",
   "ExitPenaltiesImpl": "0x3766ABbA4635EE0fC3E6A7EB3EF169fe930df9c2",
@@ -620,7 +620,7 @@
   "ValidatorStrikes": "0xf4618370a1fBf46905B16C10817c8CFaD924D6db",
   "ValidatorStrikesImpl": "0x239Ee6ab18fB06370ad53Ce05097B32208fB0a30",
   "Verifier": "0xC392F457960f1B13Ebaf1aa6C065479dD507E1E3",
-  "git-ref": "3b0c016c77590c208f2b71ca51410cb55ea2dcc2",
+  "git-ref": "7bdcfb631b13d24e8fae3b5ba0e11d4be07b84f9",
   "ExternalLibraries": {
     "AssetRecovererLib": "0x37aDa408AE3c3992953688e2CCb9eE7a3dfdA902",
     "BondCurvesLib": "0xC4511d09639e5E174506083443da230D39196323",
@@ -629,6 +629,6 @@
     "NodeOperatorOps": "0xDD42EE5D54A1822021782F3F455bb99fBC19499A",
     "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
     "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
-    "CuratedDepositAllocator": "0xa4fCD4dDa0e4a847142E3592C97c77d8B9B3Cf5F"
+    "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37"
   }
 }
