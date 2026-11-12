@@ -13,7 +13,7 @@ import { FeeDistributor } from "../../src/FeeDistributor.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { FeeOracle } from "../../src/FeeOracle.sol";
-import { Verifier } from "../../src/Verifier.sol";
+import { CuratedVerifier } from "../../src/CuratedVerifier.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
@@ -23,7 +23,7 @@ import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
-import { IVerifier } from "../../src/interfaces/IVerifier.sol";
+import { ICuratedVerifier } from "../../src/interfaces/ICuratedVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
@@ -141,7 +141,7 @@ abstract contract DeployBase is Script {
     ExitPenalties public exitPenalties;
     Ejector public ejector;
     ValidatorStrikes public strikes;
-    Verifier public verifier;
+    CuratedVerifier public verifier;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
@@ -248,13 +248,11 @@ abstract contract DeployBase is Script {
             );
 
             // prettier-ignore
-            verifier = new Verifier({
+            verifier = new CuratedVerifier({
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                gindices: IVerifier.GIndices({
-                    gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
-                    gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
+                gindices: ICuratedVerifier.GIndices({
                     gIFirstValidatorPrev: config.gIFirstValidator,
                     gIFirstValidatorCurr: config.gIFirstValidator,
                     gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
@@ -265,7 +263,6 @@ abstract contract DeployBase is Script {
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
-                minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer
             });
 
@@ -559,7 +556,7 @@ abstract contract DeployBase is Script {
             deployJson.set("ValidatorStrikes", address(strikes));
             deployJson.set("ValidatorStrikesImpl", address(strikesImpl));
             deployJson.set("HashConsensus", address(hashConsensus));
-            deployJson.set("Verifier", address(verifier));
+            deployJson.set("CuratedVerifier", address(verifier));
             deployJson.set("CuratedGateFactory", address(curatedGateFactory));
             deployJson.set("CuratedGateImpl", curatedGateImpl);
             deployJson.set("CuratedGates", curatedGateInstances);
