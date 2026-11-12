@@ -2,47 +2,19 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
-struct ValidatorData {
-    uint256 stakingModuleId;
-    uint256 nodeOperatorId;
+struct WithdrawalIntent {
+    uint64 amount;
     bytes pubkey;
 }
 
 interface ITriggerableWithdrawalsGateway {
-    function ADD_FULL_WITHDRAWAL_REQUEST_ROLE() external view returns (bytes32);
-
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
-
-    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
-
-    function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
-
     /**
-     * @dev Submits Triggerable Withdrawal Requests to the Withdrawal Vault as full withdrawal requests
-     *      for the specified validator public keys.
-     *
-     * @param triggerableExitsData An array of `ValidatorData` structs, each representing a validator
-     * for which a withdrawal request will be submitted. Each entry includes:
-     *   - `stakingModuleId`: ID of the staking module.
-     *   - `nodeOperatorId`: ID of the node operator.
-     *   - `pubkey`: Validator public key, 48 bytes length.
-     * @param refundRecipient The address that will receive any excess ETH sent for fees.
-     * @param exitType A parameter indicating the type of exit, passed to the Staking Module.
-     *
-     * Emits `TriggerableExitRequest` event for each validator in list.
-     *
-     * @notice Reverts if:
-     *     - The caller does not have the `ADD_FULL_WITHDRAWAL_REQUEST_ROLE`
-     *     - The total fee value sent is insufficient to cover all provided TW requests.
-     *     - There is not enough limit quota left in the current frame to process all requests.
+     * @notice Submits withdrawal requests for all `intents` in order.
+     *         A partial withdrawal consumes its amount from the caller's PWR limit,
+     *         a full withdrawal consumes one unit from the caller's FWR limit.
+     * @param intents Withdrawal intents: `amount == 0` is a full withdrawal, `amount > 0` is a partial one (gwei)
+     * @param refundRecipient Receiver of the unused fee; `address(0)` refunds to `msg.sender`
+     * @dev Reverts if `intents` exceed either remaining limit of the caller (no partial processing).
      */
-    function triggerFullWithdrawals(
-        ValidatorData[] calldata triggerableExitsData,
-        address refundRecipient,
-        uint256 exitType
-    ) external payable;
+    function triggerWithdrawals(WithdrawalIntent[] calldata intents, address refundRecipient) external payable;
 }

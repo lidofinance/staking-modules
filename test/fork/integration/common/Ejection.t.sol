@@ -3,7 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { IStakingRouter } from "../../../../src/interfaces/IStakingRouter.sol";
 import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
 import { IEjector } from "../../../../src/interfaces/IEjector.sol";
 import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
@@ -34,7 +33,6 @@ abstract contract EjectionTestBase is ModuleTypeBase {
     }
 
     function test_voluntaryEject() public {
-        uint256 moduleId = findModule();
         _skipOnLegacyRouter();
 
         nodeOperatorId = integrationHelpers.getDepositedNodeOperator(nextAddress(), KEYS_COUNT);
@@ -81,9 +79,6 @@ abstract contract EjectionTestBase is ModuleTypeBase {
         vm.stopSnapshotGas();
 
         vm.assertEq(operatorOwner.balance, initialBalance - expectedFee * KEYS_COUNT);
-        assertEq(ejector.stakingModuleId(), moduleId);
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(moduleId);
-        assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 }
 

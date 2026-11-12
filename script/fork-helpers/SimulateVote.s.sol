@@ -17,7 +17,6 @@ import { Verifier } from "../../src/Verifier.sol";
 import { VettedGate } from "../../src/VettedGate.sol";
 import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
-import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
@@ -56,21 +55,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
-        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(locator.triggerableWithdrawalsGateway());
 
         address agent = stakingRouter.getRoleMember(stakingRouter.STAKING_MODULE_MANAGE_ROLE(), 0);
         vm.label(agent, "agent");
 
         address moduleAdmin = _prepareAdmin(address(module));
         address burnerAdmin = _prepareAdmin(address(burner));
-        address twgAdmin = _prepareAdmin(address(twg));
 
         vm.startBroadcast(burnerAdmin);
         burner.grantRole(burner.DEFAULT_ADMIN_ROLE(), agent);
-        vm.stopBroadcast();
-
-        vm.startBroadcast(twgAdmin);
-        twg.grantRole(twg.DEFAULT_ADMIN_ROLE(), agent);
         vm.stopBroadcast();
 
         vm.startBroadcast(agent);
@@ -91,17 +84,16 @@ contract SimulateVote is Script, ForkHelpersCommon {
         });
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
-        // 3. twg role
-        twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
-        // 4. Grant resume to agent
+        // TODO: set the ejector's TWG consumer limits once the LIP-38 gateway is live
+        // 3. Grant resume to agent
         module.grantRole(module.RESUME_ROLE(), agent);
-        // 5. Resume CSM
+        // 4. Resume CSM
         module.resume();
-        // 6. Revoke resume
+        // 5. Revoke resume
         module.revokeRole(module.RESUME_ROLE(), agent);
-        // 7. Update initial epoch
+        // 6. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
-        // 8-14. Register pausers in CircuitBreaker
+        // 7-13. Register pausers in CircuitBreaker
         circuitBreaker.registerPauser(address(module), cbPauser);
         circuitBreaker.registerPauser(address(accounting), cbPauser);
         circuitBreaker.registerPauser(address(oracle), cbPauser);
@@ -128,21 +120,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
-        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(locator.triggerableWithdrawalsGateway());
 
         address agent = stakingRouter.getRoleMember(stakingRouter.STAKING_MODULE_MANAGE_ROLE(), 0);
         vm.label(agent, "agent");
 
         address curatedAdmin = _prepareAdmin(address(curatedModule));
         address burnerAdmin = _prepareAdmin(address(burner));
-        address twgAdmin = _prepareAdmin(address(twg));
 
         vm.startBroadcast(burnerAdmin);
         burner.grantRole(burner.DEFAULT_ADMIN_ROLE(), agent);
-        vm.stopBroadcast();
-
-        vm.startBroadcast(twgAdmin);
-        twg.grantRole(twg.DEFAULT_ADMIN_ROLE(), agent);
         vm.stopBroadcast();
 
         vm.startBroadcast(agent);
@@ -164,19 +150,17 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
+        // TODO: set the ejector's TWG consumer limits once the LIP-38 gateway is live
 
-        // 3. twg role
-        twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
-
-        // 4. Grant resume to agent
+        // 3. Grant resume to agent
         curatedModule.grantRole(curatedModule.RESUME_ROLE(), agent);
-        // 5. Resume Curated module
+        // 4. Resume Curated module
         curatedModule.resume();
-        // 6. Revoke resume
+        // 5. Revoke resume
         curatedModule.revokeRole(curatedModule.RESUME_ROLE(), agent);
-        // 7. Update initial epoch
+        // 6. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
-        // 8-12. Register pausers in CircuitBreaker
+        // 7-11. Register pausers in CircuitBreaker
         circuitBreaker.registerPauser(address(curatedModule), cbPauser);
         circuitBreaker.registerPauser(address(accounting), cbPauser);
         circuitBreaker.registerPauser(address(oracle), cbPauser);
@@ -379,19 +363,6 @@ contract SimulateVote is Script, ForkHelpersCommon {
             burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
             vm.stopBroadcast();
         }
-
-        {
-            ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
-                locator.triggerableWithdrawalsGateway()
-            );
-            address twgAdmin = _prepareAdmin(address(twg));
-
-            vm.startBroadcast(twgAdmin);
-            // 51. Revoke TWG full-withdrawal role from old Ejector
-            twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 52. Grant TWG full-withdrawal role to new Ejector
-            twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
-            vm.stopBroadcast();
-        }
+        // TODO: set the ejector's TWG consumer limits once the LIP-38 gateway is live
     }
 }
