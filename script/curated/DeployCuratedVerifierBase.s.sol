@@ -12,25 +12,38 @@ import { ICuratedVerifier } from "../../src/interfaces/ICuratedVerifier.sol";
 abstract contract DeployCuratedVerifierBase is Script {
     uint256 internal chainId;
     Verifier internal previous;
+    address internal aragonAgent;
+    address internal secondAdminAddress;
+    address internal circuitBreaker;
+    address internal resealManager;
 
     error ChainIdMismatch(uint256 actual, uint256 expected);
-    error UnexpectedRoleMembersCount(bytes32 role, uint256 actual, uint256 expected);
+    error PreviousRoleMembersCountMismatch(bytes32 role, uint256 actual, uint256 expected);
+    error PreviousRoleMemberMissing(bytes32 role, address account);
 
-    constructor(uint256 _chainId, address _previous) {
+    constructor(uint256 _chainId) {
         chainId = _chainId;
-        previous = Verifier(_previous);
     }
 
     /// @notice Deploy a CuratedVerifier replacing the Curated module Verifier.
-    ///         The constructor params and the role holders are taken from that Verifier.
+    ///         The constructor params are taken from that Verifier, the role holders must match its ones.
     /// @param gitRef Git revision of the deployed sources.
     function run(string memory gitRef) external {
         if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
 
         bytes32 pauseRole = previous.PAUSE_ROLE();
+        _checkPreviousRoleMembersCount(pauseRole, 2);
+        _checkPreviousRoleMember(pauseRole, circuitBreaker);
+        _checkPreviousRoleMember(pauseRole, resealManager);
+
         bytes32 resumeRole = previous.RESUME_ROLE();
-        _checkRoleMembersCount(pauseRole, 2); // CircuitBreaker and ResealManager.
-        _checkRoleMembersCount(resumeRole, 1); // ResealManager.
+        _checkPreviousRoleMembersCount(resumeRole, 1);
+        _checkPreviousRoleMember(resumeRole, resealManager);
+
+        bytes32 adminRole = previous.DEFAULT_ADMIN_ROLE();
+        _checkPreviousRoleMembersCount(adminRole, secondAdminAddress == address(0) ? 1 : 2);
+        _checkPreviousRoleMember(adminRole, aragonAgent);
+        if (secondAdminAddress != address(0)) _checkPreviousRoleMember(adminRole, secondAdminAddress);
 
         vm.startBroadcast();
         (, address deployer, ) = vm.readCallers();
@@ -55,12 +68,14 @@ abstract contract DeployCuratedVerifierBase is Script {
         });
 
         // Both verifiers share the role ids.
-        verifier.grantRole(pauseRole, previous.getRoleMember(pauseRole, 0));
-        verifier.grantRole(pauseRole, previous.getRoleMember(pauseRole, 1));
-        verifier.grantRole(resumeRole, previous.getRoleMember(resumeRole, 0));
+        verifier.grantRole(pauseRole, circuitBreaker);
+        verifier.grantRole(pauseRole, resealManager);
+        verifier.grantRole(resumeRole, resealManager);
 
-        _grantAdmins(verifier);
-        verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
+        if (secondAdminAddress != address(0)) verifier.grantRole(adminRole, secondAdminAddress);
+
+        verifier.grantRole(adminRole, aragonAgent);
+        verifier.revokeRole(adminRole, deployer);
         vm.stopBroadcast();
 
         string memory path = vm.envString("DEPLOY_CONFIG");
@@ -68,11 +83,12 @@ abstract contract DeployCuratedVerifierBase is Script {
         vm.writeJson(string.concat('"', gitRef, '"'), path, ".git-ref");
     }
 
-    /// @dev Grants the admin role to the admins of the previous Verifier.
-    function _grantAdmins(CuratedVerifier verifier) internal virtual;
-
-    function _checkRoleMembersCount(bytes32 role, uint256 expected) internal view {
+    function _checkPreviousRoleMembersCount(bytes32 role, uint256 expected) internal view {
         uint256 actual = previous.getRoleMemberCount(role);
-        if (actual != expected) revert UnexpectedRoleMembersCount(role, actual, expected);
+        if (actual != expected) revert PreviousRoleMembersCountMismatch(role, actual, expected);
+    }
+
+    function _checkPreviousRoleMember(bytes32 role, address account) internal view {
+        if (!previous.hasRole(role, account)) revert PreviousRoleMemberMissing(role, account);
     }
 }
