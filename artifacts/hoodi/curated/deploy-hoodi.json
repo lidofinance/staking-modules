@@ -631,5 +631,7 @@
   "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
   "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
   "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37",
-  "git-ref": "ce72d603f9460438d3c4544b7cc392758be16fdc"
+  "git-ref": "aef05f5af13e4065cef795cf4ff954c0a7072a7e",
+  "CuratedVerifier": "0xd82f10880590dc6C67D1e84098357DBbc88058EA",
+  "ExternalLibraries": {}
 }
