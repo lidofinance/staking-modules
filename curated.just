@@ -12,7 +12,7 @@ curated_module_script_name := "DeployCuratedModule"
 curated_module_script_path := "script/curated/" + curated_module_script_name + ".s.sol:" + curated_module_script_name
 curated_latest_upgrade_config_path := curated_artifacts_latest_dir + "upgrade-" + chain + ".json"
 curated_local_upgrade_config_path := curated_artifacts_local_dir + "upgrade-" + chain + ".json"
-curated_verifier_script_name := "DeployCuratedVerifier"
+curated_verifier_script_name := "DeployCuratedVerifier" + chain_script_suffix
 curated_verifier_script_path := "script/curated/" + curated_verifier_script_name + ".s.sol:" + curated_verifier_script_name
 curated_verifier_transactions_name := "transactions-curated-verifier.json"
 
