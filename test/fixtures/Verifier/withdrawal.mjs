@@ -9,7 +9,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType, concatGindices } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierWithdrawalTest from "../../../out/Verifier.t.sol/VerifierWithdrawalTest.json" assert { type: "json" };
+import VerifierWithdrawalTest from "../../../out/Verifier.t.sol/VerifierWithdrawalTest.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
 
