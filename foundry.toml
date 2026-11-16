@@ -43,7 +43,9 @@ ignored_warnings_from = [
     "node_modules"
 ]
 
+# Fast iterations, @see AGENTS.md.
 [profile.lite]
+solc = "solar"
 optimizer = false
 fuzz = { runs = 50 }
 
