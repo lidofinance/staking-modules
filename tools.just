@@ -22,8 +22,8 @@ check-tools:
     while IFS='|' read -r tool rule required; do
         found=$($tool --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+[^ ,()]*' | head -n1)
         case "$rule" in
-            # Foundry binaries report `<semver>-<release tag>`, and the tag is what is pinned.
-            tag) requirement="== $required"; case "$found" in *-"$required") ok=0 ;; *) ok=1 ;; esac ;;
+            # Foundry binaries report the bare semver, while the release tag is what is pinned.
+            tag) requirement="== $required"; [ "$found" = "${required#v}" ] && ok=0 || ok=1 ;;
             min) requirement=">= $required"; version_ge "$found" "$required" && ok=0 || ok=1 ;;
             eq)  requirement="== $required"; [ "$found" = "$required" ] && ok=0 || ok=1 ;;
             *)   requirement="any"; ok=0 ;;

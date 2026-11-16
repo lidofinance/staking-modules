@@ -45,8 +45,7 @@ _assert-clean-workspace:
     fi
 
 _deploy-generic deploy_script_path rpc_url *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 _deploy-live-generic deploy_script_path *args:
@@ -54,15 +53,13 @@ _deploy-live-generic deploy_script_path *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast --verify {{args}}
 
 _deploy-live-generic-no-confirm deploy_script_path *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
 
 _deploy-live-generic-dry deploy_script_path *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} {{args}}
 
 _verify-live-generic deploy_script_path *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
 # Shared artifact helpers
 _copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
@@ -335,11 +332,11 @@ gas-report:
     print(f"Done. Gas report saved to {filename}")
 
 coverage *args:
-    FOUNDRY_PROFILE=coverage forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' {{args}}
+    forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' {{args}}
 
 # Run coverage and save the report in LCOV file.
 coverage-lcov *args:
-    FOUNDRY_PROFILE=coverage forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' --report lcov {{args}}
+    forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' --report lcov {{args}}
 
 diffyscan-contracts *args:
     yarn generate:diffyscan {{args}}

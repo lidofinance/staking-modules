@@ -117,7 +117,6 @@ test-csm-full-deploy *args:
 
 # Internal helpers
 _deploy-csm-impl *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
-            --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
-            -- {{deploy_config_path}} `git rev-parse HEAD`
+    forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
+        --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
+        -- {{deploy_config_path}} `git rev-parse HEAD`
