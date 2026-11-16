@@ -549,7 +549,7 @@ abstract contract DeployBase is Script {
             deployJson.set("ValidatorStrikes", address(strikes));
             deployJson.set("ValidatorStrikesImpl", address(strikesImpl));
             deployJson.set("HashConsensus", address(hashConsensus));
-            deployJson.set("CuratedVerifier", address(verifier));
+            deployJson.set("Verifier", address(verifier));
             deployJson.set("CuratedGateFactory", address(curatedGateFactory));
             deployJson.set("CuratedGateImpl", curatedGateImpl);
             deployJson.set("CuratedGates", curatedGateInstances);

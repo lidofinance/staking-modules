@@ -10,10 +10,6 @@ get-curve-info id:
 vote-add-module:
     just _impersonate-script SimulateVote --sig="addModule"
 
-vote-upgrade:
-    just _impersonate-script SimulateVote --sig="upgrade"
-    just _impersonate-script SimulateVote --sig="postUpgrade"
-
 vote-gloas-verifier:
     just _impersonate-script SimulateVote --sig="gloasVerifier"
 

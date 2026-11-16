@@ -632,6 +632,5 @@
     "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
     "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
     "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37"
-  },
-  "CuratedVerifier": "0x8c9C8c8C91D6de09D256264B33E7C54794feb033"
+  }
 }
