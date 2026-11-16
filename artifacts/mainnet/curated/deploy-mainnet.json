@@ -620,7 +620,7 @@
   "ValidatorStrikes": "0xf4618370a1fBf46905B16C10817c8CFaD924D6db",
   "ValidatorStrikesImpl": "0x239Ee6ab18fB06370ad53Ce05097B32208fB0a30",
   "Verifier": "0xC392F457960f1B13Ebaf1aa6C065479dD507E1E3",
-  "git-ref": "7bdcfb631b13d24e8fae3b5ba0e11d4be07b84f9",
+  "git-ref": "2867bf3ed8562264275176daa5018c0bff064871",
   "ExternalLibraries": {
     "AssetRecovererLib": "0x37aDa408AE3c3992953688e2CCb9eE7a3dfdA902",
     "BondCurvesLib": "0xC4511d09639e5E174506083443da230D39196323",
@@ -630,5 +630,6 @@
     "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
     "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
     "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37"
-  }
+  },
+  "CuratedVerifier": "0x8c9C8c8C91D6de09D256264B33E7C54794feb033"
 }
