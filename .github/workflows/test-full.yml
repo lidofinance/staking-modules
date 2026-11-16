@@ -82,14 +82,14 @@ jobs:
         run: just test-unit
 
       - name: Run CSM integration regression on mainnet fork
-        run: just test-integration
+        run: just test-integration-fork
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
           DEPLOY_CONFIG: ./artifacts/mainnet/csm/upgrade-v3-mainnet.json
 
       - name: Run Curated integration regression on mainnet fork
-        run: just test-integration
+        run: just test-integration-fork
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}

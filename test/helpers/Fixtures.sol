@@ -186,7 +186,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierGloas;
         address hashConsensus;
         address lidoLocator;
         address circuitBreaker;
@@ -210,7 +209,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierGloas;
         address hashConsensus;
         address metaRegistry;
         address metaRegistryImpl;
@@ -309,10 +307,6 @@ contract DeploymentHelpers is Asserts {
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
         vm.label(deploymentConfig.verifier, "verifier");
-        if (vm.keyExistsJson(config, ".VerifierGloas")) {
-            deploymentConfig.verifierGloas = vm.parseJsonAddress(config, ".VerifierGloas");
-            vm.label(deploymentConfig.verifierGloas, "verifierGloas");
-        }
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "hashConsensus");
@@ -378,10 +372,6 @@ contract DeploymentHelpers is Asserts {
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
         vm.label(deploymentConfig.verifier, "curatedVerifier");
-        if (vm.keyExistsJson(config, ".VerifierGloas")) {
-            deploymentConfig.verifierGloas = vm.parseJsonAddress(config, ".VerifierGloas");
-            vm.label(deploymentConfig.verifierGloas, "curatedVerifierGloas");
-        }
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
@@ -805,9 +795,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        verifier = Verifier(
-            deploymentConfig.verifierGloas == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierGloas
-        );
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());
@@ -847,9 +835,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
         // The Curated module runs `CuratedVerifier`, it shares the role and pause interface used by the tests.
-        verifier = Verifier(
-            deploymentConfig.verifierGloas == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierGloas
-        );
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());

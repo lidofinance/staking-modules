@@ -8,12 +8,14 @@ import { console } from "forge-std/console.sol";
 
 import { BaseModule } from "../../src/abstract/BaseModule.sol";
 import { CuratedModule } from "../../src/CuratedModule.sol";
-import { Verifier } from "../../src/Verifier.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
 
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
+import { GloasVerifierSwap, VoteConfig } from "../utils/Votes.sol";
+import { DualGovernance } from "../utils/DualGovernance.sol";
+import { JsonBindings } from "../utils/JsonBindings.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
@@ -181,27 +183,43 @@ contract SimulateVote is Script, ForkHelpersCommon {
     /// @dev Simulation helper only.
     ///      In a real governance vote, all steps below are expected to be executed atomically
     ///      in a single transaction via a temporary vote executor contract.
-    function gloasVerifier() external {
-        string memory artifact = vm.readFile(vm.envString("DEPLOY_CONFIG"));
-        address oldVerifier = vm.parseJsonAddress(artifact, ".Verifier");
-        address newVerifier = vm.parseJsonAddress(artifact, ".VerifierGloas");
-        BaseModule module = BaseModule(address(Verifier(newVerifier).MODULE()));
-        ICircuitBreaker cb = ICircuitBreaker(vm.parseJsonAddress(artifact, ".CircuitBreaker"));
-        address pauser = cb.getPauser(oldVerifier);
+    ///      Does nothing once the vote's Dual Governance proposal is executed.
+    function run() external {
+        string memory path = vm.envString("VOTE_CONFIG");
+        if (!vm.isFile(path)) {
+            console.log("No pending vote at", path);
+            return;
+        }
+
+        VoteConfig memory vote = JsonBindings.deserializeVoteConfig(vm.readFile(path));
+        if (DualGovernance.isProposalExecuted(vote.dgTimelock, vote.dgProposalId)) {
+            console.log("Dual Governance proposal is executed, nothing to simulate:", vote.dgProposalId);
+            return;
+        }
+
+        for (uint256 i; i < vote.gloasVerifiers.length; ++i) {
+            _swapGloasVerifier(vote.gloasVerifiers[i]);
+        }
+    }
+
+    function _swapGloasVerifier(GloasVerifierSwap memory swap) internal {
+        BaseModule module = BaseModule(swap.module);
+        ICircuitBreaker cb = ICircuitBreaker(swap.circuitBreaker);
+        address pauser = cb.getPauser(swap.oldVerifier);
 
         vm.startBroadcast(_prepareAdmin(address(module)));
         // 1. Revoke VERIFIER_ROLE from the previous Verifier
-        module.revokeRole(module.VERIFIER_ROLE(), oldVerifier);
+        module.revokeRole(module.VERIFIER_ROLE(), swap.oldVerifier);
         // 2. Revoke REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE from the previous Verifier
-        module.revokeRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), oldVerifier);
+        module.revokeRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), swap.oldVerifier);
         // 3. Grant VERIFIER_ROLE to the new Verifier
-        module.grantRole(module.VERIFIER_ROLE(), newVerifier);
+        module.grantRole(module.VERIFIER_ROLE(), swap.newVerifier);
         // 4. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to the new Verifier
-        module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), newVerifier);
+        module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), swap.newVerifier);
         // 5. Register the new Verifier in CircuitBreaker with the pauser of the previous one
-        cb.registerPauser(newVerifier, pauser);
+        cb.registerPauser(swap.newVerifier, pauser);
         // 6. Unregister the previous Verifier from CircuitBreaker (a zero pauser removes it)
-        cb.registerPauser(oldVerifier, address(0));
+        cb.registerPauser(swap.oldVerifier, address(0));
         vm.stopBroadcast();
     }
 }

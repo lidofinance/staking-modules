@@ -256,6 +256,8 @@ test-gloas-verifier-local module *args:
     eval "$(just _fork-up-and-down)"
 
     local_dir=./artifacts/local/gloas-verifier/{{lowercase(module)}}/
+    export VOTE_CONFIG="$(dirname "${local_dir}")/vote.json"
+    rm -f "${VOTE_CONFIG}"
     local_private_key="$(just _local-private-key)"
     just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} "${local_dir}" "" --broadcast --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
 
@@ -263,7 +265,7 @@ test-gloas-verifier-local module *args:
     export RPC_URL={{anvil_rpc_url}}
 
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
-    just vote-gloas-verifier
+    just vote-pending
     just test-integration {{args}}
 
 # Run all unit tests
@@ -284,6 +286,16 @@ test-deployment-full-afterVote *args:
 test-integration *args:
     forge test --match-path 'test/fork/integration/**' \
         -vvv --show-progress --summary --detailed {{args}}
+
+# Run all integration tests on a local fork with the pending vote of the chain simulated
+test-integration-fork *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+    export RPC_URL={{anvil_rpc_url}}
+    just vote-pending
+    just test-integration {{args}}
 
 # Run tests for utility contracts
 test-utils *args:
@@ -456,7 +468,6 @@ _deploy-gloas-verifier-live-confirmed module *args:
 _gloas-verifier-config-name module:
     @echo {{ if lowercase(module) == "csm" { "upgrade-v3-" + chain + ".json" } else { "deploy-" + chain + ".json" } }}
 
-# Appends the Gloas Verifier to a copy of the module artifact placed in artifacts_dir
 _deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -466,6 +477,7 @@ _deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
     just _copy-file ./artifacts/{{chain}}/{{lowercase(module)}}/${config_name} {{artifacts_dir}}${config_name}
 
     DEPLOY_CONFIG={{artifacts_dir}}${config_name} \
+    VOTE_CONFIG="$(dirname "{{artifacts_dir}}")/vote.json" \
     forge script script/DeployGloasVerifier{{chain_script_suffix}}.s.sol:DeployGloasVerifier{{chain_script_suffix}}{{module}} --sig="run(string,string)" \
         --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` "${params_key}"
 

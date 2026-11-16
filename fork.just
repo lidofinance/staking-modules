@@ -10,8 +10,8 @@ get-curve-info id:
 vote-add-module:
     just _impersonate-script SimulateVote --sig="addModule"
 
-vote-gloas-verifier:
-    just _impersonate-script SimulateVote --sig="gloasVerifier"
+vote-pending:
+    VOTE_CONFIG={{ env("VOTE_CONFIG", "./artifacts/" + chain + "/vote.json") }} just _impersonate-script SimulateVote
 
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"
