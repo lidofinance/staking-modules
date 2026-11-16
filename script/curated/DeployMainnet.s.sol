@@ -53,6 +53,7 @@ contract DeployMainnet is DeployBase {
         // Module
         config.moduleType = "curated-onchain-v2";
         config.generalDelayedPenaltyReporter = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
+        config.topUpAllocationEnabler = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;

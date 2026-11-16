@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Script } from "forge-std/Script.sol";
 
 import { Verifier } from "../src/Verifier.sol";
+import { CuratedVerifier } from "../src/CuratedVerifier.sol";
 import { ILidoLocator } from "../src/interfaces/ILidoLocator.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { WCType, toWC } from "./utils/WithdrawalCredentials.sol";
@@ -16,6 +17,7 @@ struct GloasVerifierParams {
     uint64 slotsPerEpoch;
     uint64 verifierFirstSupportedSlot;
     uint64 capellaSlot;
+    /// @dev Unused by `CuratedVerifier`.
     uint256 minWithdrawalRatio;
     WCType verifierWcType;
     address circuitBreaker;
@@ -28,6 +30,8 @@ abstract contract DeployGloasVerifierBase is Script {
     uint256 internal chainId;
     GloasVerifierParams internal config;
     address internal module;
+    /// @dev The Curated module is served by `CuratedVerifier`, the other modules by `Verifier`.
+    bool internal curated;
     uint64 public verifierGloasSlot;
     address internal deployer;
 
@@ -51,30 +55,51 @@ abstract contract DeployGloasVerifierBase is Script {
         (, deployer, ) = vm.readCallers();
         vm.label(deployer, "DEPLOYER");
 
-        Verifier verifier = _deployVerifier();
+        address verifier = _deployVerifier();
 
         vm.stopBroadcast();
 
         // writeJson with a key only upserts that key, leaving the rest of the artifact intact
-        vm.writeJson(vm.toString(address(verifier)), path, ".VerifierGloas");
+        vm.writeJson(vm.toString(verifier), path, ".VerifierGloas");
         vm.writeJson(vm.toString(verifierGloasSlot), path, string.concat(paramsKey, ".verifierGloasSlot"));
         vm.writeJson(string.concat('"', gitRef, '"'), path, ".git-ref");
     }
 
-    function _deployVerifier() internal returns (Verifier verifier) {
-        verifier = new Verifier({
-            withdrawalCredentials: toWC(
-                ILidoLocator(config.lidoLocatorAddress).withdrawalVault(),
-                config.verifierWcType
-            ),
-            module: module,
-            slotsPerEpoch: config.slotsPerEpoch,
-            firstSupportedSlot: Slot.wrap(config.verifierFirstSupportedSlot),
-            gloasSlot: Slot.wrap(verifierGloasSlot),
-            capellaSlot: Slot.wrap(config.capellaSlot),
-            minWithdrawalRatio: config.minWithdrawalRatio,
-            admin: deployer
-        });
+    function _deployVerifier() internal returns (address addr) {
+        bytes32 withdrawalCredentials = toWC(
+            ILidoLocator(config.lidoLocatorAddress).withdrawalVault(),
+            config.verifierWcType
+        );
+
+        if (curated) {
+            addr = address(
+                new CuratedVerifier({
+                    withdrawalCredentials: withdrawalCredentials,
+                    module: module,
+                    slotsPerEpoch: config.slotsPerEpoch,
+                    firstSupportedSlot: Slot.wrap(config.verifierFirstSupportedSlot),
+                    gloasSlot: Slot.wrap(verifierGloasSlot),
+                    capellaSlot: Slot.wrap(config.capellaSlot),
+                    admin: deployer
+                })
+            );
+        } else {
+            addr = address(
+                new Verifier({
+                    withdrawalCredentials: withdrawalCredentials,
+                    module: module,
+                    slotsPerEpoch: config.slotsPerEpoch,
+                    firstSupportedSlot: Slot.wrap(config.verifierFirstSupportedSlot),
+                    gloasSlot: Slot.wrap(verifierGloasSlot),
+                    capellaSlot: Slot.wrap(config.capellaSlot),
+                    minWithdrawalRatio: config.minWithdrawalRatio,
+                    admin: deployer
+                })
+            );
+        }
+
+        // Both verifiers share the role ids and the access control interface.
+        Verifier verifier = Verifier(addr);
 
         if (config.secondAdminAddress != address(0)) {
             if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();

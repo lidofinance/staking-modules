@@ -26,6 +26,7 @@ import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../csm/DeployBase.s.sol";
+import { CuratedDeployParams } from "../curated/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
@@ -193,6 +194,44 @@ contract SimulateVote is Script, ForkHelpersCommon {
         circuitBreaker.registerPauser(address(verifier), cbPauser);
         circuitBreaker.registerPauser(address(ejector), cbPauser);
 
+        vm.stopBroadcast();
+    }
+
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
+    function upgradeCurated() external {
+        _setUp();
+        if (moduleType != ModuleType.Curated) revert WrongModuleType();
+
+        Env memory env = envVars();
+        string memory config = vm.readFile(env.DEPLOY_CONFIG);
+        CuratedDeployParams memory params = parseCuratedDeployParams(env.DEPLOY_CONFIG);
+        address previousVerifier = vm.parseJsonAddress(config, ".Verifier");
+        address curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
+
+        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
+        vm.startBroadcast(_prepareProxyAdmin(address(proxy)));
+        // 1. Upgrade and finalize CuratedModule v2 atomically.
+        proxy.proxy__upgradeToAndCall(address(curatedModuleImpl), abi.encodeCall(CuratedModule.finalizeUpgradeV2, ()));
+        vm.stopBroadcast();
+
+        bytes32 verifierRole = curatedModule.VERIFIER_ROLE();
+        bytes32 reportRole = curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
+
+        vm.startBroadcast(_prepareAdmin(address(curatedModule)));
+        // 2. Grant the committee permission to enable top-up allocation.
+        curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), params.topUpAllocationEnabler);
+        // 3. Revoke the verifier roles from the previous Verifier.
+        curatedModule.revokeRole(verifierRole, previousVerifier);
+        curatedModule.revokeRole(reportRole, previousVerifier);
+        // 4. Grant the verifier roles to CuratedVerifier.
+        curatedModule.grantRole(verifierRole, curatedVerifier);
+        curatedModule.grantRole(reportRole, curatedVerifier);
+        // 5. Unregister the previous Verifier pauser in CircuitBreaker.
+        circuitBreaker.registerPauser(previousVerifier, address(0));
+        // 6. Register the CuratedVerifier pauser in CircuitBreaker.
+        circuitBreaker.registerPauser(curatedVerifier, params.circuitBreakerPauser);
         vm.stopBroadcast();
     }
 
@@ -425,10 +464,11 @@ contract SimulateVote is Script, ForkHelpersCommon {
     ///      in a single transaction via a temporary vote executor contract.
     function gloasVerifier() external {
         string memory artifact = vm.readFile(vm.envString("DEPLOY_CONFIG"));
-        address oldVerifier = vm.parseJsonAddress(
-            artifact,
-            vm.keyExistsJson(artifact, ".VerifierV3") ? ".VerifierV3" : ".Verifier"
-        );
+        // The Curated module replaced its Verifier with `.CuratedVerifier`, CSM did it with `.VerifierV3`.
+        string memory oldVerifierKey = vm.keyExistsJson(artifact, ".CuratedVerifier")
+            ? ".CuratedVerifier"
+            : (vm.keyExistsJson(artifact, ".VerifierV3") ? ".VerifierV3" : ".Verifier");
+        address oldVerifier = vm.parseJsonAddress(artifact, oldVerifierKey);
         address newVerifier = vm.parseJsonAddress(artifact, ".VerifierGloas");
         BaseModule module = BaseModule(address(Verifier(newVerifier).MODULE()));
         ICircuitBreaker cb = ICircuitBreaker(vm.parseJsonAddress(artifact, ".CircuitBreaker"));

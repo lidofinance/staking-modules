@@ -9,7 +9,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType, concatGindices } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierHistoricalBase from "../../../out/VerifierHistorical.t.sol/VerifierHistoricalBase.json" assert { type: "json" };
+import VerifierHistoricalBase from "../../../out/VerifierHistorical.t.sol/VerifierHistoricalBase.json" with { type: "json" };
 
 const SLOTS_PER_HISTORICAL_ROOT = 8192;
 const SLOTS_PER_EPOCH = 32;

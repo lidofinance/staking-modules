@@ -211,6 +211,7 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
+        address curatedVerifier;
         address verifierGloas;
         address hashConsensus;
         address metaRegistry;
@@ -384,8 +385,17 @@ contract DeploymentHelpers is Asserts {
         deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
 
-        deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        vm.label(deploymentConfig.verifier, "curatedVerifier");
+        // A scratch deployment has only `.CuratedVerifier`; an upgrade artifact also keeps the previous `.Verifier`.
+        if (vm.keyExistsJson(config, ".Verifier")) {
+            deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
+            vm.label(deploymentConfig.verifier, "curatedVerifier");
+        }
+
+        if (vm.keyExistsJson(config, ".CuratedVerifier")) {
+            deploymentConfig.curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
+            vm.label(deploymentConfig.curatedVerifier, "curatedVerifierV2");
+        }
+
         if (vm.keyExistsJson(config, ".VerifierGloas")) {
             deploymentConfig.verifierGloas = vm.parseJsonAddress(config, ".VerifierGloas");
             vm.label(deploymentConfig.verifierGloas, "curatedVerifierGloas");
@@ -488,6 +498,7 @@ contract DeploymentHelpers is Asserts {
         // Module
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
+        dst.topUpAllocationEnabler = src.topUpAllocationEnabler;
 
         // ParametersRegistry
         dst.queueLowestPriority = src.queueLowestPriority;
@@ -855,8 +866,15 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
+        // `CuratedVerifier` replaces `Verifier` once deployed. Both share the role and pause interface used by the tests.
         verifier = Verifier(
-            deploymentConfig.verifierGloas == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierGloas
+            deploymentConfig.verifierGloas != address(0)
+                ? deploymentConfig.verifierGloas
+                : (
+                    deploymentConfig.curatedVerifier == address(0)
+                        ? deploymentConfig.verifier
+                        : deploymentConfig.curatedVerifier
+                )
         );
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
@@ -1254,6 +1272,12 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keyIndex, bytes memory pubkey) {
         (noId, keyIndex) = this.getDepositedNodeOperatorWithSequentialActiveKeys(nodeOperatorAddress, 1);
+        ICuratedModule cm = ICuratedModule(address(module));
+        if (!cm.isTopUpAllocationEnabled(noId)) {
+            address enabler = module.getRoleMember(cm.ENABLE_TOP_UP_ALLOCATION_ROLE(), 0);
+            vm.prank(enabler);
+            cm.enableTopUpAllocation(noId);
+        }
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 

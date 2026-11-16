@@ -68,6 +68,7 @@ contract DeployParamsJsonTest is Test {
         params.verifierFirstSupportedSlot = 100_500;
         params.verifierGloasSlot = 200_500;
         params.moduleType = keccak256("curated-onchain-v2");
+        params.topUpAllocationEnabler = address(0xC0FFEE);
         params.oracleMembers = new address[](1);
         params.oracleMembers[0] = address(0xBEEF);
         params.defaultBondCurve = new uint256[2][](1);

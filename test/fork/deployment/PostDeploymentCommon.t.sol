@@ -350,7 +350,10 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), deployParams.verifierFirstSupportedSlot);
         assertEq(Slot.unwrap(verifier.GLOAS_SLOT()), deployParams.verifierGloasSlot);
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), deployParams.capellaSlot);
-        assertEq(verifier.MIN_WITHDRAWAL_RATIO(), deployParams.minWithdrawalRatio);
+        // `CuratedVerifier` has no withdrawal proofs.
+        if (moduleType != ModuleType.Curated) {
+            assertEq(verifier.MIN_WITHDRAWAL_RATIO(), deployParams.minWithdrawalRatio);
+        }
     }
 
     function test_roles() public view {

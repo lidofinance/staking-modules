@@ -54,6 +54,7 @@ contract DeployHoodi is DeployBase {
         // Module
         config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
+        config.topUpAllocationEnabler = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;

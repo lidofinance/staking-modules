@@ -52,7 +52,8 @@ contract DeployGloasVerifierHoodiCurated is DeployGloasVerifierHoodi {
     constructor() {
         module = 0x87EB69Ae51317405FD285efD2326a4a11f6173b9;
 
+        curated = true;
+
         config.verifierWcType = WCType.Compounding;
-        config.minWithdrawalRatio = 9950;
     }
 }

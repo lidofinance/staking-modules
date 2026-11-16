@@ -15,4 +15,4 @@ def to_entry:
   else { key: .[0].name, value: .[0].address }
   end;
 
-.ExternalLibraries = (($tx[0].libraries // []) | map(to_library) | group_by(.name) | map(to_entry) | from_entries)
+.ExternalLibraries += (($tx[0].libraries // []) | map(to_library) | group_by(.name) | map(to_entry) | from_entries)
