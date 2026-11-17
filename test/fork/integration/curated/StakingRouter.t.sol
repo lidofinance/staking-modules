@@ -7,6 +7,7 @@ import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 
 import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
@@ -147,6 +148,31 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(curatedModule.getNodeOperatorBalance(noId), operatorBalanceBefore);
     }
 
+    function test_routerTopUp_followsTopUpAllocationFlag() public assertInvariants {
+        address owner = nextAddress();
+        uint256 noId = integrationHelpers.addNodeOperator(owner, 1);
+        (, , uint256 depositableCount) = module.getStakingModuleSummary();
+        vm.prank(address(stakingRouter));
+        module.obtainDepositData(depositableCount, "");
+        assertEq(module.getNodeOperator(noId).totalDepositedKeys, 1, "deposited keys");
+
+        // The first deposit leaves top-up allocation disabled.
+        assertEq(_topUpFirstKey(noId), 0, "new operator");
+
+        address enabler = curatedModule.getRoleMember(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), 0);
+        vm.prank(enabler);
+        curatedModule.enableTopUpAllocation(noId);
+        assertEq(_topUpFirstKey(noId), CuratedDepositAllocator.TOP_UP_STEP, "enabled");
+
+        vm.prank(owner);
+        curatedModule.disableTopUpAllocation(noId);
+        assertEq(_topUpFirstKey(noId), 0, "disabled by owner");
+
+        vm.prank(enabler);
+        curatedModule.enableTopUpAllocation(noId);
+        assertEq(_topUpFirstKey(noId), CuratedDepositAllocator.TOP_UP_STEP, "enabled again");
+    }
+
     function test_routerTopUp_revertsOnInvalidSigningKey() public {
         (uint256 noId, uint256 keyIndex, ) = integrationHelpers.getDepositableTopUpNodeOperator(nextAddress());
         bytes memory invalidPubkey = new bytes(48);
@@ -188,6 +214,28 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
 
         topUpLimits = new uint256[](1);
         topUpLimits[0] = topUpLimit;
+    }
+
+    /// @dev Tops up the first key of `noId` through the router and returns the amount allocated to it.
+    function _topUpFirstKey(uint256 noId) internal returns (uint256 allocated) {
+        // The router passes enough to top up the key, so a zero allocation comes from the module.
+        assertGe(_getExpectedRouterTopUpAmount(), CuratedDepositAllocator.TOP_UP_STEP, "router top-up amount");
+
+        (
+            uint256[] memory keyIndices,
+            uint256[] memory operatorIds,
+            bytes[] memory pubkeys,
+            uint256[] memory topUpLimits
+        ) = _singleTopUpArrays(noId, 0, module.getSigningKeys(noId, 0, 1), CuratedDepositAllocator.TOP_UP_STEP);
+
+        uint256 keyBalanceBefore = module.getKeyAllocatedBalances(noId, 0, 1)[0];
+        uint256 operatorBalanceBefore = curatedModule.getNodeOperatorBalance(noId);
+
+        vm.prank(topUpGateway);
+        stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
+
+        allocated = module.getKeyAllocatedBalances(noId, 0, 1)[0] - keyBalanceBefore;
+        assertEq(curatedModule.getNodeOperatorBalance(noId) - operatorBalanceBefore, allocated, "operator balance");
     }
 
     function _addValidatorKeys(address owner, uint256 nodeOperatorId, uint256 keysCount, uint256 startIndex) internal {
