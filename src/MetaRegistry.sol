@@ -186,15 +186,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setExternalModuleAllowed(uint8 moduleId, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
         MetaRegistryStorage storage $ = _storage();
-        if (!allowed) {
-            delete $.externalModules[moduleId];
-            emit ExternalModuleSet(moduleId, address(0));
-            return;
-        }
-
-        address moduleAddress = STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress;
+        address moduleAddress = allowed ? STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress : address(0);
         // Operators of the served module are sub-operators, never external ones.
         if (moduleAddress == address(MODULE)) revert InvalidExternalModule();
+        if ($.externalModules[moduleId] == moduleAddress) revert ExternalModuleAlreadySet();
 
         $.externalModules[moduleId] = moduleAddress;
         emit ExternalModuleSet(moduleId, moduleAddress);
@@ -430,7 +425,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) revert AlreadyUsedAsExternalOperator();
 
             OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) _checkExternalOperatorExistsTypeNOR(op);
+            if (opType == OperatorType.NOR) _checkExternalOperatorExists(op);
 
             $.groupIndex.groupIdByExternalKey[extKey] = groupId;
             group.externalOperators.push(op);
@@ -498,11 +493,11 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
 
-    function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal view {
+    function _checkExternalOperatorExists(ExternalOperator memory op) internal view {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
         address module = _storage().externalModules[moduleId];
         if (module == address(0)) revert ExternalModuleNotAllowed();
-        if (noId >= INodeOperatorsRegistry(module).getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
+        _onlyExistingOperator(module, noId);
     }
 
     function _getLatestEffectiveWeight(

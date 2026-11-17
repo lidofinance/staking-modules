@@ -74,6 +74,7 @@ interface IMetaRegistry {
     error WeightBoostProviderNotFound();
     error InvalidExternalModule();
     error ExternalModuleNotAllowed();
+    error ExternalModuleAlreadySet();
     error OperatorNameTooLong();
     error OperatorDescriptionTooLong();
 

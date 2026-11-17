@@ -1978,6 +1978,7 @@ contract MetaRegistryExternalModulesTest is MetaRegistryGroupsBaseTest {
         NodeOperatorsRegistryMock anotherModule = new NodeOperatorsRegistryMock();
         stakingRouter.addModule(ANOTHER_EXTERNAL_MODULE_ID, address(anotherModule));
 
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector), 0);
         vm.expectEmit(address(registry));
         emit IMetaRegistry.ExternalModuleSet(ANOTHER_EXTERNAL_MODULE_ID, address(anotherModule));
         vm.prank(admin);
@@ -1987,6 +1988,7 @@ contract MetaRegistryExternalModulesTest is MetaRegistryGroupsBaseTest {
     }
 
     function test_setExternalModuleAllowed_Disallow() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector), 0);
         vm.expectEmit(address(registry));
         emit IMetaRegistry.ExternalModuleSet(EXTERNAL_MODULE_ID, address(0));
         vm.prank(admin);
@@ -2051,6 +2053,18 @@ contract MetaRegistryExternalModulesTest is MetaRegistryGroupsBaseTest {
         vm.expectRevert(IMetaRegistry.InvalidExternalModule.selector);
         vm.prank(admin);
         registry.setExternalModuleAllowed(MODULE_ID, true);
+    }
+
+    function test_setExternalModuleAllowed_RevertWhen_AlreadyAllowed() public {
+        vm.expectRevert(IMetaRegistry.ExternalModuleAlreadySet.selector);
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(EXTERNAL_MODULE_ID, true);
+    }
+
+    function test_setExternalModuleAllowed_RevertWhen_NotAllowed() public {
+        vm.expectRevert(IMetaRegistry.ExternalModuleAlreadySet.selector);
+        vm.prank(admin);
+        registry.setExternalModuleAllowed(ANOTHER_EXTERNAL_MODULE_ID, false);
     }
 
     function test_updateGroup_RevertWhen_ExternalModuleDisallowed() public {
