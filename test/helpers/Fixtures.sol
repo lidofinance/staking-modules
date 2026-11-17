@@ -1004,6 +1004,8 @@ interface IForkIntegrationHelpers {
         uint256 keysCount
     ) external returns (uint256 nodeOperatorId);
 
+    function addDepositedNodeOperator(address from, uint256 keysCount) external returns (uint256 noId);
+
     function getDepositableNodeOperator(address nodeOperatorAddress) external returns (uint256 noId, uint256 keysCount);
 
     function getDepositedNodeOperator(address nodeOperatorAddress, uint256 keysCount) external returns (uint256 noId);
@@ -1039,6 +1041,12 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         while (operatorsLeft > 0) {
             operatorsLeft = module.batchDepositInfoUpdate(batchSize);
         }
+    }
+
+    /// @dev Adds a new node operator and deposits all its keys.
+    function addDepositedNodeOperator(address from, uint256 keysCount) external override returns (uint256 noId) {
+        noId = _addNodeOperator(from, keysCount);
+        _depositKeys(noId, keysCount);
     }
 
     function getDepositedNodeOperator(
@@ -1100,6 +1108,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
     PermissionlessGate internal permissionlessGate;
     error TopUpQueueIsEmpty();
+    error NotEnoughTopUpQueueCapacity(uint256 length, uint256 keysCount);
 
     constructor(
         CSModule module_,
@@ -1149,10 +1158,14 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) return (batch.noId(), batch.keys());
+            if (!batch.isNil()) {
+                _ensureTopUpQueueCapacity(batch.keys());
+                return (batch.noId(), batch.keys());
+            }
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+        _ensureTopUpQueueCapacity(keysCount);
     }
 
     function getDepositableTopUpNodeOperator(
@@ -1174,19 +1187,25 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     }
 
     function _depositKeys(uint256 noId, uint256 keysCount) internal override {
-        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
-        // Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
-        // would leave the freshly added keys undeposited.
-        if (enabled && limit < type(uint8).max) {
-            bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
-            if (!module.hasRole(role, address(this))) {
-                address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
-                vm.prank(admin);
-                module.grantRole(role, address(this));
-            }
-            module.setTopUpQueueLimit(type(uint8).max);
-        }
+        _ensureTopUpQueueCapacity(keysCount);
         super._depositKeys(noId, keysCount);
+    }
+
+    /// @dev Deposited keys enter the top-up queue, so its capacity caps depositable keys. Lifts the queue limit to fit
+    ///      `keysCount` keys into a queue filled by existing operators. Ideally the queue should be drained instead.
+    function _ensureTopUpQueueCapacity(uint256 keysCount) internal {
+        (bool enabled, uint256 limit, uint256 length, ) = module.getTopUpQueue();
+        if (!enabled) return;
+        if (length + keysCount > type(uint8).max) revert NotEnoughTopUpQueueCapacity(length, keysCount);
+        if (limit == type(uint8).max) return;
+
+        bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
+        if (!module.hasRole(role, address(this))) {
+            address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+            vm.prank(admin);
+            module.grantRole(role, address(this));
+        }
+        module.setTopUpQueueLimit(type(uint8).max);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
