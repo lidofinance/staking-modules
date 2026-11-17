@@ -2,7 +2,8 @@
 //
 // Builds a beacon state with a single validator and provides proofs of the validator and its balance. A withdrawn
 // validator has its balance swept by a full withdrawal in the block, with a proof of the withdrawal.
-// Used by `BeaconProofs.validatorProof`: the key, the withdrawal address and the slot come from the forked deployment.
+// Used by `BeaconProofs.mockBeaconRootAndGetValidatorProof`: the key, the withdrawal address and the slot come from
+// the forked deployment.
 
 "use strict";
 

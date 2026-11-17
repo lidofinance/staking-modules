@@ -1108,6 +1108,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
     PermissionlessGate internal permissionlessGate;
     error TopUpQueueIsEmpty();
+    error NotEnoughTopUpQueueCapacity(uint256 length, uint256 keysCount);
 
     constructor(
         CSModule module_,
@@ -1150,7 +1151,6 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     function getDepositableNodeOperator(
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keysCount) {
-        _liftTopUpQueueLimit();
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         module.cleanDepositQueue({
             maxItems: Math.max(DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH, 2 * depositableValidatorsCount)
@@ -1158,10 +1158,14 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) return (batch.noId(), batch.keys());
+            if (!batch.isNil()) {
+                _ensureTopUpQueueCapacity(batch.keys());
+                return (batch.noId(), batch.keys());
+            }
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+        _ensureTopUpQueueCapacity(keysCount);
     }
 
     function getDepositableTopUpNodeOperator(
@@ -1183,15 +1187,17 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     }
 
     function _depositKeys(uint256 noId, uint256 keysCount) internal override {
-        _liftTopUpQueueLimit();
+        _ensureTopUpQueueCapacity(keysCount);
         super._depositKeys(noId, keysCount);
     }
 
-    /// @dev Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
-    ///      would leave the depositable keys undeposited.
-    function _liftTopUpQueueLimit() internal {
-        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
-        if (!enabled || limit == type(uint8).max) return;
+    /// @dev Deposited keys enter the top-up queue, so its capacity caps depositable keys. Lifts the queue limit to fit
+    ///      `keysCount` keys into a queue filled by existing operators. Ideally the queue should be drained instead.
+    function _ensureTopUpQueueCapacity(uint256 keysCount) internal {
+        (bool enabled, uint256 limit, uint256 length, ) = module.getTopUpQueue();
+        if (!enabled) return;
+        if (length + keysCount > type(uint8).max) revert NotEnoughTopUpQueueCapacity(length, keysCount);
+        if (limit == type(uint8).max) return;
 
         bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
         if (!module.hasRole(role, address(this))) {

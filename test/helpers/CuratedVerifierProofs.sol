@@ -77,7 +77,7 @@ library CuratedVerifierProofs {
         BeaconProofs.ValidatorStatus status
     ) private returns (BeaconProofs.ValidatorProof memory) {
         return
-            BeaconProofs.validatorProof({
+            BeaconProofs.mockBeaconRootAndGetValidatorProof({
                 pubkey: verifier.MODULE().getSigningKeys(noId, keyIndex, 1),
                 withdrawalAddress: verifier.WITHDRAWAL_ADDRESS(),
                 // The current generalized indices apply from the pivot slot.

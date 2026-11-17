@@ -48,11 +48,12 @@ abstract contract VerifierBalanceIntegrationTestBase is VerifierIntegrationTestB
     function test_processBalanceProof() public {
         uint256 noId = integrationHelpers.addDepositedNodeOperator(nextAddress(), 1);
         uint256 operatorBalanceBefore = module.getNodeOperatorBalance(noId);
-        uint256 balance = 40 ether;
+        // Modules confirm the key balance above the activation balance.
+        uint256 confirmed = 8 ether;
+        uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + confirmed;
 
         _processBalanceProof(noId, 0, balance);
 
-        uint256 confirmed = balance - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         assertEq(module.getKeyConfirmedBalances(noId, 0, 1)[0], confirmed, "key confirmed balance");
         assertEq(module.getKeyAllocatedBalances(noId, 0, 1)[0], confirmed, "key allocated balance");
         assertEq(module.getNodeOperatorBalance(noId) - operatorBalanceBefore, confirmed, "operator balance");

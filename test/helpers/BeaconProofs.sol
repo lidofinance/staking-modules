@@ -13,9 +13,11 @@ import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "src/lib/Types.so
 library BeaconProofs {
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    // See `BEACON_ROOTS_ADDRESS` and `HISTORY_BUFFER_LENGTH` in the EIP-4788.
+    // See `BEACON_ROOTS_ADDRESS` and `SYSTEM_ADDRESS` in the EIP-4788.
     address internal constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
-    uint256 internal constant HISTORY_BUFFER_LENGTH = 8191;
+    address internal constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
+
+    error BeaconRootNotSet();
 
     enum ValidatorStatus {
         Active,
@@ -41,16 +43,16 @@ library BeaconProofs {
     /// @dev Used by `test/fixtures/BeaconProofs/validator.mjs` to encode the proof.
     function ffi_interface(ValidatorProof memory) external pure {}
 
-    /// @dev Returns proofs of a validator with `pubkey` and its `balance` in a state at `slot`.
-    ///      The root of the block is available at the current block timestamp.
-    function validatorProof(
+    /// @dev Returns proofs of a validator with `pubkey` and its `balance` in a state at `slot`, and mocks the root of
+    ///      the block at the current block timestamp.
+    function mockBeaconRootAndGetValidatorProof(
         bytes memory pubkey,
         address withdrawalAddress,
         Slot slot,
         uint256 balance,
         ValidatorStatus status
     ) internal returns (ValidatorProof memory proof) {
-        string[] memory statuses = new string[](3);
+        string[] memory statuses = new string[](uint256(type(ValidatorStatus).max) + 1);
         statuses[uint256(ValidatorStatus.Active)] = "active";
         statuses[uint256(ValidatorStatus.Slashed)] = "slashed";
         statuses[uint256(ValidatorStatus.Withdrawn)] = "withdrawn";
@@ -78,9 +80,9 @@ library BeaconProofs {
     }
 
     function _setBeaconRoot(bytes32 root) private {
-        // The EIP-4788 contract keeps the timestamp and the root in a ring buffer.
-        uint256 bufferIndex = block.timestamp % HISTORY_BUFFER_LENGTH;
-        vm.store(BEACON_ROOTS, bytes32(bufferIndex), bytes32(block.timestamp));
-        vm.store(BEACON_ROOTS, bytes32(bufferIndex + HISTORY_BUFFER_LENGTH), root);
+        // The EIP-4788 contract stores the root at the current block timestamp when called by the system address.
+        vm.prank(SYSTEM_ADDRESS);
+        (bool success, ) = BEACON_ROOTS.call(abi.encode(root));
+        if (!success) revert BeaconRootNotSet();
     }
 }
