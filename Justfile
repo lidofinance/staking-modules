@@ -421,35 +421,6 @@ make-fork *args:
 kill-fork:
     @-pkill anvil && just _warn "anvil process is killed"
 
-deploy-utils module_name contract_name *args:
-    just _deploy-utils {{module_name}} {{contract_name}} {{anvil_rpc_url}} ./artifacts/latest/{{module_name}}/utils/{{contract_name}}/ "" --broadcast {{args}}
-
-deploy-utils-dry module_name contract_name *args:
-    just _deploy-utils {{module_name}} {{contract_name}} $RPC_URL ./artifacts/local/{{module_name}}/utils/{{contract_name}}/ "/dry-run" {{args}}
-
-deploy-utils-live module_name contract_name *args:
-    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    just _deploy-utils-live-confirmed {{module_name}} {{contract_name}} {{args}}
-
-[confirm("You are about to broadcast utility contract deployment transactions to the network. Are you sure?")]
-_deploy-utils-live-confirmed module_name contract_name *args:
-    just _assert-clean-workspace
-    just _deploy-utils {{module_name}} {{contract_name}} $RPC_URL ./artifacts/latest/{{module_name}}/utils/{{contract_name}}/ "" --broadcast --verify {{args}}
-
-_deploy-utils module_name contract_name rpc_url artifacts_dir dry-prefix *args:
-    #!/usr/bin/env bash
-    CHAIN_LOWER="{{chain}}"
-    CHAIN_CAPITALIZED="${CHAIN_LOWER^}"
-
-    mkdir -p {{artifacts_dir}}
-    ARTIFACTS_DIR={{artifacts_dir}} \
-    forge script script/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol:Deploy{{contract_name}}${CHAIN_CAPITALIZED} --sig="run(string)" \
-        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD`
-
-    just _copy-file \
-        ./broadcast/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
-        {{artifacts_dir}}/transactions.json
-
 deploy-gloas-verifier module *args:
     just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast {{args}}
 

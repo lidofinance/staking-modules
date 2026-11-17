@@ -291,10 +291,6 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
 }
 
 contract HashConsensusDeploymentTest is DeploymentBaseTest {
-    struct UtilsDeployParams {
-        address twoPhaseFrameConfigUpdate;
-    }
-
     function test_state() public view {
         (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime) = hashConsensus.getChainConfig();
         assertEq(slotsPerEpoch, deployParams.slotsPerEpoch);

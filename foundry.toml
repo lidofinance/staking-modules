@@ -82,4 +82,4 @@ exclude_lints = [
 [bind_json]
 # Only the deployment params and vote inputs structs are (de)serialized as JSON, @see script/utils/JsonBindings.sol.
 out = "script/utils/JsonBindings.sol"
-include = ["*DeployBase*", "*DeployCSM0x02Base*", "*DeployTwoPhase*", "*utils/Votes.sol"]
+include = ["*DeployBase*", "*DeployCSM0x02Base*", "*utils/Votes.sol"]

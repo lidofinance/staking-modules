@@ -107,8 +107,6 @@ contract DeploymentHelpers is Asserts {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
-        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/<module>/utils/<name>/deploy-<chain>.json)
-        string UTILS_DEPLOY_CONFIG;
     }
 
     // Intersection of DeployParams and CuratedDeployParams
@@ -220,11 +218,7 @@ contract DeploymentHelpers is Asserts {
     }
 
     function envVars() public returns (Env memory) {
-        Env memory env = Env(
-            vm.envOr("RPC_URL", string("")),
-            vm.envOr("DEPLOY_CONFIG", string("")),
-            vm.envOr("UTILS_DEPLOY_CONFIG", string(""))
-        );
+        Env memory env = Env(vm.envOr("RPC_URL", string("")), vm.envOr("DEPLOY_CONFIG", string("")));
         vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
         vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
         return env;

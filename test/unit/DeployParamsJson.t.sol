@@ -8,7 +8,6 @@ import { Test } from "forge-std/Test.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams, CuratedGateConfig } from "script/curated/DeployBase.s.sol";
-import { TwoPhaseFrameConfigUpdateParams } from "script/DeployTwoPhaseFrameConfigUpdate.s.sol";
 import { JsonBindings } from "script/utils/JsonBindings.sol";
 import { DeploymentHelpers } from "test/helpers/Fixtures.sol";
 
@@ -82,23 +81,6 @@ contract DeployParamsJsonTest is Test {
 
         string memory json = JsonBindings.serialize(params, "curated", "CuratedDeployParams");
         CuratedDeployParams memory back = JsonBindings.deserializeCuratedDeployParams(json, ".CuratedDeployParams");
-
-        assertEq(keccak256(abi.encode(back)), keccak256(abi.encode(params)));
-    }
-
-    function test_twoPhaseFrameConfigUpdateParams() public {
-        TwoPhaseFrameConfigUpdateParams memory params = TwoPhaseFrameConfigUpdateParams({
-            reportsToProcessBeforeOffsetPhase: 1,
-            reportsToProcessBeforeRestorePhase: 2,
-            offsetPhaseEpochsPerFrame: 3,
-            restorePhaseFastLaneLengthSlots: 4
-        });
-
-        string memory json = JsonBindings.serialize(params, "utils", "TwoPhaseFrameConfigUpdateParams");
-        TwoPhaseFrameConfigUpdateParams memory back = JsonBindings.deserializeTwoPhaseFrameConfigUpdateParams(
-            json,
-            ".TwoPhaseFrameConfigUpdateParams"
-        );
 
         assertEq(keccak256(abi.encode(back)), keccak256(abi.encode(params)));
     }
