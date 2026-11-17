@@ -1004,6 +1004,8 @@ interface IForkIntegrationHelpers {
         uint256 keysCount
     ) external returns (uint256 nodeOperatorId);
 
+    function addDepositedNodeOperator(address from, uint256 keysCount) external returns (uint256 noId);
+
     function getDepositableNodeOperator(address nodeOperatorAddress) external returns (uint256 noId, uint256 keysCount);
 
     function getDepositedNodeOperator(address nodeOperatorAddress, uint256 keysCount) external returns (uint256 noId);
@@ -1039,6 +1041,12 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         while (operatorsLeft > 0) {
             operatorsLeft = module.batchDepositInfoUpdate(batchSize);
         }
+    }
+
+    /// @dev Adds a new node operator and deposits all its keys.
+    function addDepositedNodeOperator(address from, uint256 keysCount) external override returns (uint256 noId) {
+        noId = _addNodeOperator(from, keysCount);
+        _depositKeys(noId, keysCount);
     }
 
     function getDepositedNodeOperator(
