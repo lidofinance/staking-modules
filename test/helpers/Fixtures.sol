@@ -1150,6 +1150,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     function getDepositableNodeOperator(
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keysCount) {
+        _liftTopUpQueueLimit();
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         module.cleanDepositQueue({
             maxItems: Math.max(DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH, 2 * depositableValidatorsCount)
@@ -1182,19 +1183,23 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     }
 
     function _depositKeys(uint256 noId, uint256 keysCount) internal override {
-        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
-        // Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
-        // would leave the freshly added keys undeposited.
-        if (enabled && limit < type(uint8).max) {
-            bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
-            if (!module.hasRole(role, address(this))) {
-                address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
-                vm.prank(admin);
-                module.grantRole(role, address(this));
-            }
-            module.setTopUpQueueLimit(type(uint8).max);
-        }
+        _liftTopUpQueueLimit();
         super._depositKeys(noId, keysCount);
+    }
+
+    /// @dev Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
+    ///      would leave the depositable keys undeposited.
+    function _liftTopUpQueueLimit() internal {
+        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
+        if (!enabled || limit == type(uint8).max) return;
+
+        bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
+        if (!module.hasRole(role, address(this))) {
+            address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+            vm.prank(admin);
+            module.grantRole(role, address(this));
+        }
+        module.setTopUpQueueLimit(type(uint8).max);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
