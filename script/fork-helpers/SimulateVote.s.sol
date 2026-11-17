@@ -34,6 +34,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
     bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+    // curated-onchain-v1, the only external module allowed by LIP-33
+    uint8 internal constant NOR_MODULE_ID = 1;
 
     error WrongModuleType();
 
@@ -182,6 +184,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
         circuitBreaker.registerPauser(address(oracle), cbPauser);
         circuitBreaker.registerPauser(address(verifier), cbPauser);
         circuitBreaker.registerPauser(address(ejector), cbPauser);
+        // 13. Allow NOR as the MetaRegistry external module
+        metaRegistry.setExternalModuleAllowed(NOR_MODULE_ID, true);
 
         vm.stopBroadcast();
     }

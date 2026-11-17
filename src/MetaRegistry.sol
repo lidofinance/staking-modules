@@ -47,7 +47,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         GroupIndex groupIndex;
         EffectiveWeightCache effectiveWeightCache;
         mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
-        mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
+        // Modules whose operators' stake counts as external stake of groups; zero means not counted.
+        mapping(uint256 moduleId => address moduleAddress) externalModules;
         uint256 groupsCount;
         WeightBoostProviderEntry[] weightBoostProviders;
     }
@@ -183,6 +184,18 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
+    function setExternalModuleAllowed(uint8 moduleId, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        MetaRegistryStorage storage $ = _storage();
+        address moduleAddress = allowed ? STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress : address(0);
+        // Operators of the served module are sub-operators, never external ones.
+        if (moduleAddress == address(MODULE)) revert InvalidExternalModule();
+        if ($.externalModules[moduleId] == moduleAddress) revert ExternalModuleAlreadySet();
+
+        $.externalModules[moduleId] = moduleAddress;
+        emit ExternalModuleSet(moduleId, moduleAddress);
+    }
+
+    /// @inheritdoc IMetaRegistry
     function refreshOperatorWeight(uint256 nodeOperatorId) external {
         uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
         if (groupId == NO_GROUP_ID) return;
@@ -228,6 +241,11 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function getWeightBoostProviders() external view returns (WeightBoostProviderEntry[] memory providers) {
         providers = _storage().weightBoostProviders;
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getExternalModuleAddress(uint8 moduleId) external view returns (address moduleAddress) {
+        moduleAddress = _storage().externalModules[moduleId];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -407,7 +425,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) revert AlreadyUsedAsExternalOperator();
 
             OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) _checkExternalOperatorExistsTypeNOR(op);
+            if (opType == OperatorType.NOR) _checkExternalOperatorExists(op);
 
             $.groupIndex.groupIdByExternalKey[extKey] = groupId;
             group.externalOperators.push(op);
@@ -475,20 +493,11 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
 
-    function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {
+    function _checkExternalOperatorExists(ExternalOperator memory op) internal view {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
-        address module = _getOrCacheModuleAddress(moduleId);
-        if (noId >= INodeOperatorsRegistry(module).getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
-    }
-
-    /// @dev Returns the module address for `moduleId`, resolving from
-    ///      STAKING_ROUTER on cache miss.
-    function _getOrCacheModuleAddress(uint8 moduleId) internal returns (address addr) {
-        addr = _storage().moduleAddressCache[moduleId];
-        if (addr == address(0)) {
-            addr = STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress;
-            _storage().moduleAddressCache[moduleId] = addr;
-        }
+        address module = _storage().externalModules[moduleId];
+        if (module == address(0)) revert ExternalModuleNotAllowed();
+        _onlyExistingOperator(module, noId);
     }
 
     function _getLatestEffectiveWeight(
@@ -557,13 +566,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         }
     }
 
-    /// @dev Returns the cached module address. Reverts if the address was
-    ///      never resolved via `_getOrCacheModuleAddress`.
-    function _getCachedModuleAddress(uint8 moduleId) internal view returns (address addr) {
-        addr = _storage().moduleAddressCache[moduleId];
-        if (addr == address(0)) revert ModuleAddressNotCached();
-    }
-
     function _onlyExistingOperator(address module, uint256 nodeOperatorId) internal view {
         if (!_nodeOperatorExists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
     }
@@ -591,8 +593,9 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _getOperatorExternalStakeTypeNOR(ExternalOperator memory op) internal view returns (uint256 stake) {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
 
-        // NOTE: The module address is expected to be cached during _storeExternalOperators.
-        address module = _getCachedModuleAddress(moduleId);
+        address module = _storage().externalModules[moduleId];
+        // NOTE: A disallowed module contributes no external stake, so it can be cut off without editing groups.
+        if (module == address(0)) return 0;
 
         (, , , , uint64 totalExitedValidators, , uint64 totalDepositedValidators) = INodeOperatorsRegistry(module)
             .getNodeOperator(noId, false);
