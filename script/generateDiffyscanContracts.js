@@ -1,22 +1,22 @@
 const fs = require("fs");
 const path = require("path");
 
-const ARTIFACTS_DIR = "artifacts";
-
 function readJsonFile(path) {
   return JSON.parse(fs.readFileSync(path));
 }
 
 function main() {
+  const args = process.argv.slice(2);
+  if (!args.length) {
+    throw new Error("Pass forge broadcast runs, e.g. broadcast/DeployMainnet.s.sol/1");
+  }
+
   const result = {};
-  for (const arg of process.argv.slice(2).length ? process.argv.slice(2) : [""]) {
-    // Accepts nested subdirs, e.g. "local/csm" or "hoodi/curated", or a path to a transactions .json file.
-    const txPath = path.join(
-      ARTIFACTS_DIR,
-      arg.endsWith(".json") ? arg : path.join(arg, "transactions.json"),
-    );
+  for (const arg of args) {
+    // Accepts a forge broadcast run .json file, or a broadcast dir holding run-latest.json.
+    const txPath = arg.endsWith(".json") ? arg : path.join(arg, "run-latest.json");
     if (!fs.existsSync(txPath)) {
-      throw new Error("transactions.json not found at: " + txPath);
+      throw new Error("Broadcast run not found at: " + txPath);
     }
     const transactions = readJsonFile(txPath).transactions;
 

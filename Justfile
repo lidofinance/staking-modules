@@ -62,26 +62,21 @@ _verify-live-generic deploy_script_path *args:
     forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
 # Shared artifact helpers
-_copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
-    just _copy-file \
-        ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}} \
-        {{dest_path}}
-
 _finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_config_path:
-    just _copy-broadcast-json "{{script_name}}" "{{rpc_url}}" "{{dry_prefix}}" "{{json_name}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
-    just _merge-external-libraries "{{deploy_config_path}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
+    just _merge-external-libraries "{{deploy_config_path}}" \
+        ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}}
 
 _copy-file src_path dest_path:
     mkdir -p "$(dirname "{{dest_path}}")"
     cp "{{src_path}}" "{{dest_path}}"
 
-_merge-external-libraries deploy_config_path transactions_path:
+_merge-external-libraries deploy_config_path broadcast_path:
     #!/usr/bin/env bash
     set -euo pipefail
     # Requires jq of a version that keeps the uint256 literals intact, @see `just check-tools`.
     merged=$(mktemp)
     trap 'rm -f "$merged"' EXIT
-    jq --slurpfile tx "{{transactions_path}}" -f script/mergeExternalLibraries.jq "{{deploy_config_path}}" > "$merged"
+    jq --slurpfile tx "{{broadcast_path}}" -f script/mergeExternalLibraries.jq "{{deploy_config_path}}" > "$merged"
     mv "$merged" "{{deploy_config_path}}"
 
 # Shared local fork helpers
@@ -350,6 +345,7 @@ coverage *args:
 coverage-lcov *args:
     forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' --report lcov {{args}}
 
+# Prints the address-to-contract map for diffyscan, e.g. `just diffyscan-contracts broadcast/DeployMainnet.s.sol/1`
 diffyscan-contracts *args:
     yarn generate:diffyscan {{args}}
 
@@ -451,10 +447,6 @@ _deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
     VOTE_CONFIG="$(dirname "{{artifacts_dir}}")/vote.json" \
     forge script script/DeployGloasVerifier{{chain_script_suffix}}.s.sol:DeployGloasVerifier{{chain_script_suffix}}{{module}} --sig="run(string,string)" \
         --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` "${params_key}"
-
-    just _copy-file \
-        ./broadcast/DeployGloasVerifier{{chain_script_suffix}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
-        {{artifacts_dir}}transactions-gloas-verifier.json
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"

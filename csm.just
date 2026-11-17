@@ -3,8 +3,6 @@ deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy
 
 csm_artifacts_latest_dir := "./artifacts/latest/csm/"
 csm_artifacts_local_dir := "./artifacts/local/csm/"
-csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
-csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
 csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
 csm_local_deploy_config_path := csm_artifacts_local_dir + "deploy-" + chain + ".json"
 
