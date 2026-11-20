@@ -1130,6 +1130,8 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         bool extendedPermissions,
         uint256 keysCount
     ) external override returns (uint256 nodeOperatorId) {
+        _ensureTopUpQueueCapacity(keysCount);
+
         (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         uint256 amount = accounting.getBondAmountByKeysCount(keysCount, permissionlessGate.CURVE_ID());
         vm.deal(from, amount);
@@ -1165,7 +1167,6 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
-        _ensureTopUpQueueCapacity(keysCount);
     }
 
     function getDepositableTopUpNodeOperator(
@@ -1184,11 +1185,6 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
         (noId, keyIndex) = module.getTopUpQueueItem(0);
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
-    }
-
-    function _depositKeys(uint256 noId, uint256 keysCount) internal override {
-        _ensureTopUpQueueCapacity(keysCount);
-        super._depositKeys(noId, keysCount);
     }
 
     /// @dev Deposited keys enter the top-up queue, so its capacity caps depositable keys. Lifts the queue limit to fit
