@@ -7,7 +7,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierSlashingTest from "../../../out/Verifier.t.sol/VerifierSlashingTest.json" assert { type: "json" };
+import VerifierSlashingTest from "../../../out/Verifier.t.sol/VerifierSlashingTest.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
 

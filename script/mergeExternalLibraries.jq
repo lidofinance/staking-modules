@@ -1,5 +1,5 @@
 # Merges the libraries deployed by a forge script into the `ExternalLibraries` key of a deployment artifact.
-# Usage: jq --slurpfile tx <transactions.json> -f script/mergeExternalLibraries.jq <deploy-config.json>
+# Usage: jq --slurpfile tx <broadcast run.json> -f script/mergeExternalLibraries.jq <deploy-config.json>
 
 def to_library:
   . as $entry
@@ -15,4 +15,4 @@ def to_entry:
   else { key: .[0].name, value: .[0].address }
   end;
 
-.ExternalLibraries = (($tx[0].libraries // []) | map(to_library) | group_by(.name) | map(to_entry) | from_entries)
+.ExternalLibraries += (($tx[0].libraries // []) | map(to_library) | group_by(.name) | map(to_entry) | from_entries)

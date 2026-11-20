@@ -8,12 +8,37 @@ import { IStakingModuleV2 } from "./IStakingModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
+    event TopUpAllocationEnabled(uint256 indexed nodeOperatorId);
+    event TopUpAllocationDisabled(uint256 indexed nodeOperatorId);
+
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
+
+    /// @notice Role allowed to enable top-up allocation for node operators.
+    function ENABLE_TOP_UP_ALLOCATION_ROLE() external view returns (bytes32);
 
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     function initialize(address admin) external;
+
+    /// @notice Finalizes the upgrade from version 1 to version 2.
+    /// @dev Must be called atomically with the proxy upgrade. Fresh deployments use initialize instead.
+    ///      Enables top-up allocation for existing operators with totalDepositedKeys > totalWithdrawnKeys.
+    function finalizeUpgradeV2() external;
+
+    /// @notice Enables top-up allocation for a node operator.
+    /// @param nodeOperatorId ID of the node operator.
+    function enableTopUpAllocation(uint256 nodeOperatorId) external;
+
+    /// @notice Disables top-up allocation for a node operator. Only callable by its owner.
+    /// @dev Excludes the operator's weight and stake from the executable top-up allocation baseline.
+    /// @param nodeOperatorId ID of the node operator.
+    function disableTopUpAllocation(uint256 nodeOperatorId) external;
+
+    /// @notice Returns whether top-up allocation is enabled for a node operator.
+    /// @param nodeOperatorId ID of the node operator.
+    /// @return enabled Whether top-up allocation is enabled.
+    function isTopUpAllocationEnabled(uint256 nodeOperatorId) external view returns (bool enabled);
 
     /// @notice Notifies the module about the weight change of a node operator.
     /// @param nodeOperatorId ID of the Node Operator
@@ -53,8 +78,8 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
 
     /// @notice Returns current top-up allocation targets for all operators.
     /// @dev `target = totalCurrent * operatorWeight / totalWeight` (in wei).
-    ///      Includes operators regardless of top-up capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with usable capacity,
+    ///      Includes operators regardless of top-up capacity or whether allocation is enabled for informational purposes.
+    ///      Actual allocation recalculates shares only across operators with allocation enabled and usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currentAllocations Current operator stake in wei.
