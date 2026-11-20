@@ -2,7 +2,7 @@
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 150
-bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
+bytecode_hash = "ipfs" # Appends the IPFS hash of the metadata, which covers the sources, to the bytecode.
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
 verbosity = 3
