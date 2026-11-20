@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 import {DeployParams} from "script/csm/DeployBase.s.sol";
 import {DeployCSM0x02Params} from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import {CuratedDeployParams, CuratedGateConfig, GateCurveParams} from "script/curated/DeployBase.s.sol";
-import {GloasVerifierSwap, VoteConfig} from "script/utils/Votes.sol";
+import {VerifierSwap} from "script/votes/GloasVerifiers.sol";
 
 interface Vm {
     function parseJsonTypeArray(string calldata json, string calldata key, string calldata typeDescription) external pure returns (bytes memory);
@@ -23,8 +23,7 @@ library JsonBindings {
     string constant schema_GateCurveParams = "GateCurveParams(MarkedUint248 generalDelayedPenaltyAdditionalFine,MarkedUint248 keysLimit,uint256[2][] avgPerfLeewayData,uint256[2][] rewardShareData,MarkedUint248 strikesLifetimeFrames,MarkedUint248 strikesThreshold,MarkedUint248 badPerformancePenalty,MarkedUint248 attestationsWeight,MarkedUint248 blocksWeight,MarkedUint248 syncWeight,MarkedUint248 metaRegistryBondCurveWeight,MarkedUint248 allowedExitDelay,MarkedUint248 exitDelayFee,MarkedUint248 maxElWithdrawalRequestFee)MarkedUint248(uint248 value,bool isValue)";
     string constant schema_CuratedGateConfig = "CuratedGateConfig(string name,uint256[2][] bondCurve,bytes32 treeRoot,string treeCid,GateCurveParams params)GateCurveParams(MarkedUint248 generalDelayedPenaltyAdditionalFine,MarkedUint248 keysLimit,uint256[2][] avgPerfLeewayData,uint256[2][] rewardShareData,MarkedUint248 strikesLifetimeFrames,MarkedUint248 strikesThreshold,MarkedUint248 badPerformancePenalty,MarkedUint248 attestationsWeight,MarkedUint248 blocksWeight,MarkedUint248 syncWeight,MarkedUint248 metaRegistryBondCurveWeight,MarkedUint248 allowedExitDelay,MarkedUint248 exitDelayFee,MarkedUint248 maxElWithdrawalRequestFee)MarkedUint248(uint248 value,bool isValue)";
     string constant schema_CuratedDeployParams = "CuratedDeployParams(address lidoLocatorAddress,address aragonAgent,address easyTrackEVMScriptExecutor,address proxyAdmin,uint256 secondsPerSlot,uint256 slotsPerEpoch,uint256 clGenesisTime,uint256 oracleReportEpochsPerFrame,uint256 fastLaneLengthSlots,uint256 consensusVersion,address[] oracleMembers,uint256 hashConsensusQuorum,bytes32 gIFirstWithdrawal,bytes32 gIFirstValidator,bytes32 gIFirstHistoricalSummary,bytes32 gIFirstBalanceNode,uint256 verifierFirstSupportedSlot,uint256 verifierGloasSlot,uint8 verifierWcType,uint256 capellaSlot,uint256 minWithdrawalRatio,uint256[2][] defaultBondCurve,uint256 minBondLockPeriod,uint256 maxBondLockPeriod,uint256 bondLockPeriod,address chargePenaltyRecipient,bytes32 moduleType,address generalDelayedPenaltyReporter,address topUpAllocationEnabler,uint256 queueLowestPriority,uint256 defaultKeyRemovalCharge,uint256 defaultGeneralDelayedPenaltyAdditionalFine,uint256 defaultKeysLimit,uint256 defaultAvgPerfLeewayBP,uint256 defaultRewardShareBP,uint256 defaultStrikesLifetimeFrames,uint256 defaultStrikesThreshold,uint256 defaultQueuePriority,uint256 defaultQueueMaxDeposits,uint256 defaultBadPerformancePenalty,uint256 defaultAttestationsWeight,uint256 defaultBlocksWeight,uint256 defaultSyncWeight,uint256 defaultAllowedExitDelay,uint256 defaultExitDelayFee,uint256 defaultMaxElWithdrawalRequestFee,address penaltiesManager,CuratedGateConfig[] curatedGates,address curatedGatePauseManager,address setOperatorInfoManager,address circuitBreaker,address circuitBreakerPauser,address resealManager,address secondAdminAddress)CuratedGateConfig(string name,uint256[2][] bondCurve,bytes32 treeRoot,string treeCid,GateCurveParams params)GateCurveParams(MarkedUint248 generalDelayedPenaltyAdditionalFine,MarkedUint248 keysLimit,uint256[2][] avgPerfLeewayData,uint256[2][] rewardShareData,MarkedUint248 strikesLifetimeFrames,MarkedUint248 strikesThreshold,MarkedUint248 badPerformancePenalty,MarkedUint248 attestationsWeight,MarkedUint248 blocksWeight,MarkedUint248 syncWeight,MarkedUint248 metaRegistryBondCurveWeight,MarkedUint248 allowedExitDelay,MarkedUint248 exitDelayFee,MarkedUint248 maxElWithdrawalRequestFee)MarkedUint248(uint248 value,bool isValue)";
-    string constant schema_GloasVerifierSwap = "GloasVerifierSwap(address module,address circuitBreaker,address oldVerifier,address newVerifier)";
-    string constant schema_VoteConfig = "VoteConfig(uint256 dgProposalId,address dgTimelock,GloasVerifierSwap[] gloasVerifiers)GloasVerifierSwap(address module,address circuitBreaker,address oldVerifier,address newVerifier)";
+    string constant schema_VerifierSwap = "VerifierSwap(address module,address circuitBreaker,address oldVerifier,address newVerifier,address pauser)";
     string constant schema_DeployParams = "DeployParams(address lidoLocatorAddress,address aragonAgent,address easyTrackEVMScriptExecutor,address proxyAdmin,uint256 secondsPerSlot,uint256 slotsPerEpoch,uint256 clGenesisTime,uint256 oracleReportEpochsPerFrame,uint256 fastLaneLengthSlots,uint256 consensusVersion,address[] oracleMembers,uint256 hashConsensusQuorum,bytes32 gIFirstWithdrawal,bytes32 gIFirstValidator,bytes32 gIFirstHistoricalSummary,bytes32 gIFirstBalanceNode,uint256 verifierFirstSupportedSlot,uint256 verifierGloasSlot,uint8 verifierWcType,uint256 capellaSlot,uint256 minWithdrawalRatio,uint256[2][] defaultBondCurve,uint256[2][] legacyEaBondCurve,uint256[2][][] extraBondCurves,uint256 minBondLockPeriod,uint256 maxBondLockPeriod,uint256 bondLockPeriod,address setResetBondCurveAddress,address chargePenaltyRecipient,bytes32 moduleType,address generalDelayedPenaltyReporter,uint8 topUpQueueLimit,uint256 queueLowestPriority,uint256 defaultKeyRemovalCharge,uint256 defaultGeneralDelayedPenaltyAdditionalFine,uint256 defaultKeysLimit,uint256 defaultAvgPerfLeewayBP,uint256 defaultRewardShareBP,uint256 defaultStrikesLifetimeFrames,uint256 defaultStrikesThreshold,uint256 defaultQueuePriority,uint256 defaultQueueMaxDeposits,uint256 defaultBadPerformancePenalty,uint256 defaultAttestationsWeight,uint256 defaultBlocksWeight,uint256 defaultSyncWeight,uint256 defaultAllowedExitDelay,uint256 defaultExitDelayFee,uint256 defaultMaxElWithdrawalRequestFee,address penaltiesManager,address identifiedCommunityStakersGateManager,uint256 identifiedCommunityStakersGateCurveId,string identifiedCommunityStakersGateName,bytes32 identifiedCommunityStakersGateTreeRoot,string identifiedCommunityStakersGateTreeCid,uint256[2][] identifiedCommunityStakersGateBondCurve,uint256 identifiedCommunityStakersGateKeyRemovalCharge,uint256 identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine,uint256 identifiedCommunityStakersGateKeysLimit,uint256[2][] identifiedCommunityStakersGateAvgPerfLeewayData,uint256[2][] identifiedCommunityStakersGateRewardShareData,uint256 identifiedCommunityStakersGateStrikesLifetimeFrames,uint256 identifiedCommunityStakersGateStrikesThreshold,uint256 identifiedCommunityStakersGateQueuePriority,uint256 identifiedCommunityStakersGateQueueMaxDeposits,uint256 identifiedCommunityStakersGateBadPerformancePenalty,uint256 identifiedCommunityStakersGateAttestationsWeight,uint256 identifiedCommunityStakersGateBlocksWeight,uint256 identifiedCommunityStakersGateSyncWeight,uint256 identifiedCommunityStakersGateAllowedExitDelay,uint256 identifiedCommunityStakersGateExitDelayFee,uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee,string identifiedDVTClusterGateName,bytes32 identifiedDVTClusterGateTreeRoot,string identifiedDVTClusterGateTreeCid,uint256 identifiedDVTClusterBondCurveId,uint256[2][] identifiedDVTClusterBondCurve,uint256[2][] identifiedDVTClusterRewardShareData,uint256 identifiedDVTClusterQueuePriority,uint256 identifiedDVTClusterQueueMaxDeposits,uint256 identifiedDVTClusterKeyRemovalCharge,uint256 identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine,uint256 identifiedDVTClusterAllowedExitDelay,uint256 identifiedDVTClusterExitDelayFee,address circuitBreaker,address circuitBreakerPauser,address resealManager,address secondAdminAddress)";
 
     function serialize(DeployCSM0x02Params memory value) internal pure returns (string memory) {
@@ -107,44 +106,24 @@ library JsonBindings {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_CuratedDeployParams), (CuratedDeployParams[]));
     }
 
-    function serialize(GloasVerifierSwap memory value) internal pure returns (string memory) {
-        return vm.serializeJsonType(schema_GloasVerifierSwap, abi.encode(value));
+    function serialize(VerifierSwap memory value) internal pure returns (string memory) {
+        return vm.serializeJsonType(schema_VerifierSwap, abi.encode(value));
     }
 
-    function serialize(GloasVerifierSwap memory value, string memory objectKey, string memory valueKey) internal returns (string memory) {
-        return vm.serializeJsonType(objectKey, valueKey, schema_GloasVerifierSwap, abi.encode(value));
+    function serialize(VerifierSwap memory value, string memory objectKey, string memory valueKey) internal returns (string memory) {
+        return vm.serializeJsonType(objectKey, valueKey, schema_VerifierSwap, abi.encode(value));
     }
 
-    function deserializeGloasVerifierSwap(string memory json) internal pure returns (GloasVerifierSwap memory) {
-        return abi.decode(vm.parseJsonType(json, schema_GloasVerifierSwap), (GloasVerifierSwap));
+    function deserializeVerifierSwap(string memory json) internal pure returns (VerifierSwap memory) {
+        return abi.decode(vm.parseJsonType(json, schema_VerifierSwap), (VerifierSwap));
     }
 
-    function deserializeGloasVerifierSwap(string memory json, string memory path) internal pure returns (GloasVerifierSwap memory) {
-        return abi.decode(vm.parseJsonType(json, path, schema_GloasVerifierSwap), (GloasVerifierSwap));
+    function deserializeVerifierSwap(string memory json, string memory path) internal pure returns (VerifierSwap memory) {
+        return abi.decode(vm.parseJsonType(json, path, schema_VerifierSwap), (VerifierSwap));
     }
 
-    function deserializeGloasVerifierSwapArray(string memory json, string memory path) internal pure returns (GloasVerifierSwap[] memory) {
-        return abi.decode(vm.parseJsonTypeArray(json, path, schema_GloasVerifierSwap), (GloasVerifierSwap[]));
-    }
-
-    function serialize(VoteConfig memory value) internal pure returns (string memory) {
-        return vm.serializeJsonType(schema_VoteConfig, abi.encode(value));
-    }
-
-    function serialize(VoteConfig memory value, string memory objectKey, string memory valueKey) internal returns (string memory) {
-        return vm.serializeJsonType(objectKey, valueKey, schema_VoteConfig, abi.encode(value));
-    }
-
-    function deserializeVoteConfig(string memory json) internal pure returns (VoteConfig memory) {
-        return abi.decode(vm.parseJsonType(json, schema_VoteConfig), (VoteConfig));
-    }
-
-    function deserializeVoteConfig(string memory json, string memory path) internal pure returns (VoteConfig memory) {
-        return abi.decode(vm.parseJsonType(json, path, schema_VoteConfig), (VoteConfig));
-    }
-
-    function deserializeVoteConfigArray(string memory json, string memory path) internal pure returns (VoteConfig[] memory) {
-        return abi.decode(vm.parseJsonTypeArray(json, path, schema_VoteConfig), (VoteConfig[]));
+    function deserializeVerifierSwapArray(string memory json, string memory path) internal pure returns (VerifierSwap[] memory) {
+        return abi.decode(vm.parseJsonTypeArray(json, path, schema_VerifierSwap), (VerifierSwap[]));
     }
 
     function serialize(DeployParams memory value) internal pure returns (string memory) {

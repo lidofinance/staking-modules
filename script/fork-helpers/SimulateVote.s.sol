@@ -13,9 +13,8 @@ import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerabl
 import { IBurner } from "../../src/interfaces/IBurner.sol";
 
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
-import { GloasVerifierSwap, VoteConfig } from "../utils/Votes.sol";
-import { DualGovernance } from "../utils/DualGovernance.sol";
-import { JsonBindings } from "../utils/JsonBindings.sol";
+import { Votes } from "../votes/Votes.sol";
+import { GloasVerifiers, VerifierSwap } from "../votes/GloasVerifiers.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
@@ -180,32 +179,50 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
+    /// @dev Simulates the pending votes of the chain found in `VOTES_DIR`, in the order they are to be executed.
+    function run() external {
+        _gloasVerifiers();
+    }
+
     /// @dev Simulation helper only.
     ///      In a real governance vote, all steps below are expected to be executed atomically
     ///      in a single transaction via a temporary vote executor contract.
-    ///      Does nothing once the vote's Dual Governance proposal is executed.
-    function run() external {
-        string memory path = vm.envString("VOTE_CONFIG");
-        if (!vm.isFile(path)) {
-            console.log("No pending vote at", path);
-            return;
-        }
+    function _gloasVerifiers() internal {
+        (bool pending, string memory json) = _pendingVote(GloasVerifiers.NAME);
+        if (!pending) return;
 
-        VoteConfig memory vote = JsonBindings.deserializeVoteConfig(vm.readFile(path));
-        if (DualGovernance.isProposalExecuted(vote.dgTimelock, vote.dgProposalId)) {
-            console.log("Dual Governance proposal is executed, nothing to simulate:", vote.dgProposalId);
-            return;
-        }
-
-        for (uint256 i; i < vote.gloasVerifiers.length; ++i) {
-            _swapGloasVerifier(vote.gloasVerifiers[i]);
-        }
+        _swapVerifier(json, "csm");
+        _swapVerifier(json, "csm0x02");
+        _swapVerifier(json, "curated");
     }
 
-    function _swapGloasVerifier(GloasVerifierSwap memory swap) internal {
+    /// @dev A vote is pending while its file exists and its Dual Governance proposal is not executed.
+    function _pendingVote(string memory name) internal view returns (bool pending, string memory json) {
+        string memory file = Votes.path(name);
+        if (!vm.isFile(file)) {
+            console.log("No pending vote at", file);
+            return (false, json);
+        }
+
+        json = vm.readFile(file);
+        if (Votes.isExecuted(json)) {
+            console.log("The vote is executed, remove it with its steps:", file);
+            return (false, json);
+        }
+
+        console.log("Simulating the vote at", file);
+        return (true, json);
+    }
+
+    function _swapVerifier(string memory json, string memory moduleKey) internal {
+        (bool found, VerifierSwap memory swap) = GloasVerifiers.read(json, moduleKey);
+        if (!found) {
+            console.log("No Verifier swap for", moduleKey);
+            return;
+        }
+
         BaseModule module = BaseModule(swap.module);
         ICircuitBreaker cb = ICircuitBreaker(swap.circuitBreaker);
-        address pauser = cb.getPauser(swap.oldVerifier);
 
         vm.startBroadcast(_prepareAdmin(address(module)));
         // 1. Revoke VERIFIER_ROLE from the previous Verifier
@@ -217,7 +234,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         // 4. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to the new Verifier
         module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), swap.newVerifier);
         // 5. Register the new Verifier in CircuitBreaker with the pauser of the previous one
-        cb.registerPauser(swap.newVerifier, pauser);
+        cb.registerPauser(swap.newVerifier, swap.pauser);
         // 6. Unregister the previous Verifier from CircuitBreaker (a zero pauser removes it)
         cb.registerPauser(swap.oldVerifier, address(0));
         vm.stopBroadcast();

@@ -7,12 +7,13 @@ import { Script } from "forge-std/Script.sol";
 
 import { Verifier } from "../src/Verifier.sol";
 import { CuratedVerifier } from "../src/CuratedVerifier.sol";
+import { ICircuitBreaker } from "../src/interfaces/ICircuitBreaker.sol";
 import { ILidoLocator } from "../src/interfaces/ILidoLocator.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { WCType, toWC } from "./utils/WithdrawalCredentials.sol";
-import { GloasVerifierSwap, VoteConfig } from "./utils/Votes.sol";
 import { DualGovernance } from "./utils/DualGovernance.sol";
-import { JsonBindings } from "./utils/JsonBindings.sol";
+import { Votes } from "./votes/Votes.sol";
+import { GloasVerifiers, VerifierSwap } from "./votes/GloasVerifiers.sol";
 
 struct GloasVerifierParams {
     address lidoLocatorAddress;
@@ -42,65 +43,48 @@ abstract contract DeployGloasVerifierBase is Script {
     error GloasSlotNotSet();
     error CannotBeUsedInMainnet();
     error InvalidSecondAdmin();
-    error VoteAlreadySubmitted(uint256 dgProposalId);
+    error ModuleMismatch(address actual, address expected);
 
     constructor(string memory _chainName, uint256 _chainId) {
         chainName = _chainName;
         chainId = _chainId;
     }
 
-    function run(string memory gitRef, string memory paramsKey) external {
+    /// @param moduleKey The artifact directory of the module, keys its section of the vote.
+    function run(string memory gitRef, string memory moduleKey) external {
         if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
         if (verifierGloasSlot == type(uint64).max) revert GloasSlotNotSet();
 
         string memory path = vm.envString("DEPLOY_CONFIG");
-        address oldVerifier = vm.parseJsonAddress(vm.readFile(path), ".Verifier");
+        string memory vote = Votes.open(GloasVerifiers.NAME, DualGovernance.getTimelock(config.resealManager));
+
+        // A redeploy before the vote replaces the new Verifier only.
+        (bool found, VerifierSwap memory swap) = GloasVerifiers.read(vm.readFile(vote), moduleKey);
+        if (found && swap.module != module) revert ModuleMismatch({ actual: swap.module, expected: module });
+        if (!found) {
+            swap.module = module;
+            swap.circuitBreaker = config.circuitBreaker;
+            swap.oldVerifier = vm.parseJsonAddress(vm.readFile(path), ".Verifier");
+            swap.pauser = ICircuitBreaker(config.circuitBreaker).getPauser(swap.oldVerifier);
+        }
 
         vm.startBroadcast();
         (, deployer, ) = vm.readCallers();
         vm.label(deployer, "DEPLOYER");
 
-        address newVerifier = _deployVerifier();
+        swap.newVerifier = _deployVerifier();
 
         vm.stopBroadcast();
 
-        // writeJson with a key only upserts that key, leaving the rest of the artifact intact
-        vm.writeJson(vm.toString(newVerifier), path, ".Verifier");
-        vm.writeJson(vm.toString(verifierGloasSlot), path, string.concat(paramsKey, ".verifierGloasSlot"));
-        vm.writeJson(string.concat('"', gitRef, '"'), path, ".git-ref");
-
-        _addToVote(
-            GloasVerifierSwap({
-                module: module,
-                circuitBreaker: config.circuitBreaker,
-                oldVerifier: oldVerifier,
-                newVerifier: newVerifier
-            })
+        // writeJson with a key only upserts that key, leaving the rest of the file intact
+        vm.writeJson(vm.toString(swap.newVerifier), path, ".Verifier");
+        vm.writeJson(
+            vm.toString(verifierGloasSlot),
+            path,
+            curated ? ".CuratedDeployParams.verifierGloasSlot" : ".DeployParams.verifierGloasSlot"
         );
-    }
-
-    /// @dev Adds the swap to the vote at `VOTE_CONFIG`, replacing an earlier one of the same module.
-    function _addToVote(GloasVerifierSwap memory swap) internal {
-        string memory path = vm.envString("VOTE_CONFIG");
-        VoteConfig memory vote;
-        if (vm.isFile(path)) {
-            vote = JsonBindings.deserializeVoteConfig(vm.readFile(path));
-            if (vote.dgProposalId != 0) revert VoteAlreadySubmitted(vote.dgProposalId);
-        } else {
-            vote.dgTimelock = DualGovernance.getTimelock(config.resealManager);
-        }
-
-        GloasVerifierSwap[] memory swaps = vote.gloasVerifiers;
-        uint256 i;
-        while (i < swaps.length && swaps[i].module != swap.module) ++i;
-        if (i == swaps.length) {
-            swaps = new GloasVerifierSwap[](i + 1);
-            for (uint256 j; j < i; ++j) swaps[j] = vote.gloasVerifiers[j];
-        }
-        swaps[i] = swap;
-        vote.gloasVerifiers = swaps;
-
-        vm.writeJson(JsonBindings.serialize(vote), path);
+        vm.writeJson(string.concat('"', gitRef, '"'), path, ".git-ref");
+        GloasVerifiers.write(vote, moduleKey, swap);
     }
 
     function _deployVerifier() internal returns (address addr) {

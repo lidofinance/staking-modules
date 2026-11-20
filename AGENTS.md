@@ -79,7 +79,12 @@
 - Deployment phase must end in post-handoff state: required admin roles are returned to the protocol agent and deployer admin rights are revoked.
 - Vote phase: simulate-vote scripts should apply governance actions to already deployed protocol contracts only (proxy upgrades, role/state transitions), not deployment-only setup.
 - Vote phase steps should be explicit and deterministic: encode concrete, ordered calls with known addresses; avoid generic loop-based governance steps unless explicitly required.
-- Pending vote: `artifacts/<chain>/vote.json` holds the steps of the chain's next vote with every address they need, replaced ones included, committed together with the deploy artifacts. Deploy scripts add their steps to it, `just vote-pending` simulates it until its Dual Governance proposal (`dgProposalId`, zero until submitted) is executed, and CI runs the mainnet integration tests on top of it. Remove the file and its steps from `SimulateVote` once the vote is executed.
+- Module artifacts `artifacts/<chain>/<module>/` describe the deployment once the pending votes are executed.
+- Pending votes: `artifacts/<chain>/votes/<vote>.json` holds every value a vote hard-codes, replaced addresses included, keyed by the artifact directory of the module it changes (`csm`, `csm0x02`, `curated`) or by another component, and its Dual Governance proposal: `dgProposalId` is zero until the proposal is submitted, then recorded by hand.
+  - The name and section types of a vote live in `script/votes/`, its steps in `SimulateVote`, whose `run` lists the votes in their execution order. `just vote-pending` simulates the ones with a file until their proposals are executed.
+  - Deploy scripts create the file and write their own sections only, the other values are written by hand. Once a vote is submitted, deploy scripts refuse to change it.
+  - Remove the file and the steps of a vote once it is executed.
+- Only live runs write to the tracked artifacts. The others write to `artifacts/local/<chain>/`, a fresh copy of the artifacts of the chain made on each run.
 
 ## Commit & Pull Request Guidelines
 

@@ -27,6 +27,7 @@ anvil_host := env_var_or_default("ANVIL_IP_ADDR", "127.0.0.1")
 anvil_port := env_var_or_default("ANVIL_PORT", "8545")
 anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
+local_artifacts_dir := "./artifacts/local" / chain
 
 # Shared deployment helpers
 _assert-clean-workspace:
@@ -69,6 +70,11 @@ _finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_co
 _copy-file src_path dest_path:
     mkdir -p "$(dirname "{{dest_path}}")"
     cp "{{src_path}}" "{{dest_path}}"
+
+# Non-live runs write to a fresh copy of the artifacts of the chain instead of the tracked ones
+_local-artifacts:
+    rm -rf {{local_artifacts_dir}}
+    cp -r ./artifacts/{{chain}} {{local_artifacts_dir}}
 
 _merge-external-libraries deploy_config_path broadcast_path:
     #!/usr/bin/env bash
@@ -250,13 +256,11 @@ test-gloas-verifier-local module *args:
 
     eval "$(just _fork-up-and-down)"
 
-    local_dir=./artifacts/local/gloas-verifier/{{lowercase(module)}}/
-    export VOTE_CONFIG="$(dirname "${local_dir}")/vote.json"
-    rm -f "${VOTE_CONFIG}"
     local_private_key="$(just _local-private-key)"
-    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} "${local_dir}" "" --broadcast --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
+    just deploy-gloas-verifier {{module}} --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
 
-    export DEPLOY_CONFIG="${local_dir}$(just _gloas-verifier-config-name {{module}})"
+    export DEPLOY_CONFIG={{local_artifacts_dir}}/{{lowercase(module)}}/$(just _gloas-verifier-config-name {{module}})
+    export VOTES_DIR={{local_artifacts_dir}}/votes
     export RPC_URL={{anvil_rpc_url}}
 
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
@@ -282,7 +286,7 @@ test-integration *args:
     forge test --match-path 'test/fork/integration/**' \
         -vvv --show-progress --summary --detailed {{args}}
 
-# Run all integration tests on a local fork with the pending vote of the chain simulated
+# Run all integration tests on a local fork with the pending votes of the chain simulated
 test-integration-fork *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -417,11 +421,11 @@ make-fork *args:
 kill-fork:
     @-pkill anvil && just _warn "anvil process is killed"
 
-deploy-gloas-verifier module *args:
-    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast {{args}}
+deploy-gloas-verifier module *args: _local-artifacts
+    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} {{local_artifacts_dir}} --broadcast {{args}}
 
-deploy-gloas-verifier-dry module *args:
-    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/local/{{lowercase(module)}}/ "/dry-run" {{args}}
+deploy-gloas-verifier-dry module *args: _local-artifacts
+    just _deploy-gloas-verifier {{module}} $RPC_URL {{local_artifacts_dir}} {{args}}
 
 deploy-gloas-verifier-live module *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
@@ -430,23 +434,19 @@ deploy-gloas-verifier-live module *args:
 [confirm("You are about to broadcast a Gloas Verifier deployment transaction to the network. Are you sure?")]
 _deploy-gloas-verifier-live-confirmed module *args:
     just _assert-clean-workspace
-    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast --verify {{args}}
+    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/{{chain}} --broadcast --verify {{args}}
 
 _gloas-verifier-config-name module:
     @echo {{ if lowercase(module) == "csm" { "upgrade-v3-" + chain + ".json" } else { "deploy-" + chain + ".json" } }}
 
-_deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
+_deploy-gloas-verifier module rpc_url artifacts_dir *args:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    config_name="$(just _gloas-verifier-config-name {{module}})"
-    params_key={{ if lowercase(module) == "curated" { ".CuratedDeployParams" } else { ".DeployParams" } }}
-    just _copy-file ./artifacts/{{chain}}/{{lowercase(module)}}/${config_name} {{artifacts_dir}}${config_name}
-
-    DEPLOY_CONFIG={{artifacts_dir}}${config_name} \
-    VOTE_CONFIG="$(dirname "{{artifacts_dir}}")/vote.json" \
+    DEPLOY_CONFIG={{artifacts_dir}}/{{lowercase(module)}}/$(just _gloas-verifier-config-name {{module}}) \
+    VOTES_DIR={{artifacts_dir}}/votes \
     forge script script/DeployGloasVerifier{{chain_script_suffix}}.s.sol:DeployGloasVerifier{{chain_script_suffix}}{{module}} --sig="run(string,string)" \
-        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` "${params_key}"
+        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` {{lowercase(module)}}
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"
