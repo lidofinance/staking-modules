@@ -48,6 +48,16 @@ ignored_warnings_from = [
 solc = "solar"
 optimizer = false
 fuzz = { runs = 50 }
+# Foundry's defaults plus the pragma mismatch warning, solar being a newer compiler than the pinned one.
+ignored_error_codes = [
+    "license",
+    "code-size",
+    "init-code-size",
+    "transient-storage",
+    "transfer-deprecated",
+    "natspec-memory-safe-assembly-deprecated",
+    5333,
+]
 
 [profile.ci]
 verbosity = 3

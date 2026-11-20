@@ -28,7 +28,6 @@
 - For fast local checks after small edits, prefer targeted compile of changed Solidity files: `forge build <changed-file-1> <changed-file-2> ...`.
 - Keep `forge build` as the full-project compile when touching shared interfaces/libraries or before final handoff.
 - Agentic runs only: compile and run tests with the `lite` profile, e.g. `FOUNDRY_PROFILE=lite just build`, `FOUNDRY_PROFILE=lite just test-unit`. It uses the solar backend, so a full build takes seconds instead of minutes.
-  - Solar targets a newer Solidity version, its `warning[5333]` pragma mismatch warnings are expected.
   - The profile disables the optimizer, and solar codegen differs from solc. Don't rely on it for gas numbers, contract sizes, deployments, or verification; use the default profile for those.
   - Switching between profiles recompiles the whole project.
 
