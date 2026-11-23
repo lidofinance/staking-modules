@@ -11,7 +11,7 @@ vote-add-module:
     just _impersonate-script SimulateVote --sig="addModule"
 
 vote-pending:
-    VOTES_DIR={{ env("VOTES_DIR", "./artifacts" / chain / "votes") }} just _impersonate-script SimulateVote
+    VOTES_DIR={{votes_dir}} just _impersonate-script SimulateVote
 
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"

@@ -206,7 +206,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         json = vm.readFile(file);
         if (Votes.isExecuted(json)) {
-            console.log("The vote is executed, remove it with its steps:", file);
+            console.log("The vote is executed, remove it with its steps and tests:", file);
             return (false, json);
         }
 

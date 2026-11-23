@@ -28,6 +28,7 @@ anvil_port := env_var_or_default("ANVIL_PORT", "8545")
 anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
 local_artifacts_dir := "./artifacts/local" / chain
+votes_dir := env("VOTES_DIR", "./artifacts" / chain / "votes")
 
 # Shared deployment helpers
 _assert-clean-workspace:
@@ -266,6 +267,7 @@ test-gloas-verifier-local module *args:
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
     export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
     just vote-pending
+    just test-votes {{args}}
     just test-integration {{args}}
 
 # Run all unit tests
@@ -296,7 +298,13 @@ test-integration-fork *args:
     export RPC_URL={{anvil_rpc_url}}
     export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
     just vote-pending
+    just test-votes {{args}}
     just test-integration {{args}}
+
+# Run the tests of the pending votes simulated right after VOTE_PREV_BLOCK.
+# One thread, as concurrent reads of past blocks through anvil are flaky.
+test-votes *args:
+    VOTES_DIR={{votes_dir}} forge test --match-path 'test/fork/votes/**' --threads 1 -vvv {{args}}
 
 # Run tests for utility contracts
 test-utils *args:
