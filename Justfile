@@ -264,6 +264,7 @@ test-gloas-verifier-local module *args:
     export RPC_URL={{anvil_rpc_url}}
 
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
+    export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
     just vote-pending
     just test-integration {{args}}
 
@@ -293,6 +294,7 @@ test-integration-fork *args:
 
     eval "$(just _fork-up-and-down)"
     export RPC_URL={{anvil_rpc_url}}
+    export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
     just vote-pending
     just test-integration {{args}}
 

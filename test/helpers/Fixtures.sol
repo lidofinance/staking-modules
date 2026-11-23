@@ -107,6 +107,7 @@ contract DeploymentHelpers is Asserts {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
+        uint256 VOTE_PREV_BLOCK;
     }
 
     // Intersection of DeployParams and CuratedDeployParams
@@ -218,7 +219,11 @@ contract DeploymentHelpers is Asserts {
     }
 
     function envVars() public returns (Env memory) {
-        Env memory env = Env(vm.envOr("RPC_URL", string("")), vm.envOr("DEPLOY_CONFIG", string("")));
+        Env memory env = Env(
+            vm.envOr("RPC_URL", string("")),
+            vm.envOr("DEPLOY_CONFIG", string("")),
+            vm.envOr("VOTE_PREV_BLOCK", uint256(0))
+        );
         vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
         vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
         return env;
