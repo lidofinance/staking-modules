@@ -203,7 +203,6 @@ contract MetaRegistryGroupsBaseTest is MetaRegistryBaseTest {
     ) internal {
         NodeOperatorsRegistryMock.NodeOperatorData memory data;
 
-        data.active = true;
         data.totalExitedValidators = exitedValidators;
         data.totalDepositedValidators = depositedValidators;
 

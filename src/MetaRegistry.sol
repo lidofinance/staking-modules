@@ -8,14 +8,13 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBondCurve } from "./interfaces/IBondCurve.sol";
-import { INodeOperatorsRegistry } from "./interfaces/INodeOperatorsRegistry.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
-import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
+import { ExternalOperatorLib } from "./lib/ExternalOperatorLib.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Stores meta-operator group definitions and weight composition for the curated module.
@@ -424,8 +423,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
             if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) revert AlreadyUsedAsExternalOperator();
 
-            OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) _checkExternalOperatorExists(op);
+            (uint8 moduleId, uint64 noId) = op.decode();
+            _checkExternalOperatorExists(moduleId, noId);
 
             $.groupIndex.groupIdByExternalKey[extKey] = groupId;
             group.externalOperators.push(op);
@@ -493,8 +492,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
 
-    function _checkExternalOperatorExists(ExternalOperator memory op) internal view {
-        (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
+    function _checkExternalOperatorExists(uint8 moduleId, uint64 noId) internal view {
         address module = _storage().externalModules[moduleId];
         if (module == address(0)) revert ExternalModuleNotAllowed();
         _onlyExistingOperator(module, noId);
@@ -583,22 +581,18 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     ) internal view returns (uint256 totalExternalStake) {
         uint256 externalOperatorsCount = externalOperators.length;
         for (uint256 i; i < externalOperatorsCount; ++i) {
-            ExternalOperator memory op = externalOperators[i];
-
-            OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) totalExternalStake += _getOperatorExternalStakeTypeNOR(op);
+            (uint8 moduleId, uint64 noId) = externalOperators[i].decode();
+            totalExternalStake += _getOperatorExternalStake(moduleId, noId);
         }
     }
 
-    function _getOperatorExternalStakeTypeNOR(ExternalOperator memory op) internal view returns (uint256 stake) {
-        (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
-
+    function _getOperatorExternalStake(uint8 moduleId, uint64 noId) internal view returns (uint256 stake) {
         address module = _storage().externalModules[moduleId];
         // NOTE: A disallowed module contributes no external stake, so it can be cut off without editing groups.
         if (module == address(0)) return 0;
 
-        (, , , , uint64 totalExitedValidators, , uint64 totalDepositedValidators) = INodeOperatorsRegistry(module)
-            .getNodeOperator(noId, false);
+        (, , , , , uint256 totalExitedValidators, uint256 totalDepositedValidators, ) = IStakingModule(module)
+            .getNodeOperatorSummary(noId);
         stake = (totalDepositedValidators - totalExitedValidators) * EXTERNAL_STAKE_PER_VALIDATOR;
     }
 
