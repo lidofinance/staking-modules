@@ -46,7 +46,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         GroupIndex groupIndex;
         EffectiveWeightCache effectiveWeightCache;
         mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
-        // Modules whose operators' stake counts as external stake of groups; zero means not counted.
+        // Operators of allowed modules may contribute external stake to groups.
+        // A zero address disallows the module.
         mapping(uint256 moduleId => address moduleAddress) externalModules;
         uint256 groupsCount;
         WeightBoostProviderEntry[] weightBoostProviders;
