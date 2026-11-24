@@ -4,8 +4,6 @@ curated_deploy_script_path := "script" / "curated" / curated_deploy_script_name 
 
 curated_artifacts_latest_dir := "./artifacts/latest/curated/"
 curated_artifacts_local_dir := "./artifacts/local/curated/"
-curated_latest_transactions_path := curated_artifacts_latest_dir + "transactions.json"
-curated_local_transactions_path := curated_artifacts_local_dir + "transactions.json"
 curated_latest_deploy_config_path := curated_artifacts_latest_dir + "deploy-" + chain + ".json"
 curated_local_deploy_config_path := curated_artifacts_local_dir + "deploy-" + chain + ".json"
 

@@ -3,8 +3,6 @@ deploy_csm0x02_script_path := "script" / "csm0x02" / deploy_csm0x02_script_name 
 
 csm0x02_artifacts_local_dir := "./artifacts/local/csm0x02/"
 csm0x02_artifacts_latest_dir := "./artifacts/latest/csm0x02/"
-csm0x02_local_transactions_path := csm0x02_artifacts_local_dir + "transactions.json"
-csm0x02_latest_transactions_path := csm0x02_artifacts_latest_dir + "transactions.json"
 csm0x02_local_deploy_config_path := csm0x02_artifacts_local_dir + "deploy-" + chain + ".json"
 csm0x02_latest_deploy_config_path := csm0x02_artifacts_latest_dir + "deploy-" + chain + ".json"
 csm0x02_deploy_config_path := "artifacts" / chain / "csm0x02" / "deploy-" + chain + ".json"

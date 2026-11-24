@@ -27,6 +27,8 @@ anvil_host := env_var_or_default("ANVIL_IP_ADDR", "127.0.0.1")
 anvil_port := env_var_or_default("ANVIL_PORT", "8545")
 anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
+local_artifacts_dir := "./artifacts/local" / chain
+votes_dir := env("VOTES_DIR", "./artifacts" / chain / "votes")
 
 # Shared deployment helpers
 _assert-clean-workspace:
@@ -45,8 +47,7 @@ _assert-clean-workspace:
     fi
 
 _deploy-generic deploy_script_path rpc_url *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 _deploy-live-generic deploy_script_path *args:
@@ -54,37 +55,35 @@ _deploy-live-generic deploy_script_path *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast --verify {{args}}
 
 _deploy-live-generic-no-confirm deploy_script_path *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
 
 _deploy-live-generic-dry deploy_script_path *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} {{args}}
 
 _verify-live-generic deploy_script_path *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
+    forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
 # Shared artifact helpers
-_copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
-    just _copy-file \
-        ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}} \
-        {{dest_path}}
-
 _finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_config_path:
-    just _copy-broadcast-json "{{script_name}}" "{{rpc_url}}" "{{dry_prefix}}" "{{json_name}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
-    just _merge-external-libraries "{{deploy_config_path}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
+    just _merge-external-libraries "{{deploy_config_path}}" \
+        ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}}
 
 _copy-file src_path dest_path:
     mkdir -p "$(dirname "{{dest_path}}")"
     cp "{{src_path}}" "{{dest_path}}"
 
-_merge-external-libraries deploy_config_path transactions_path:
+# Non-live runs write to a fresh copy of the artifacts of the chain instead of the tracked ones
+_local-artifacts:
+    rm -rf {{local_artifacts_dir}}
+    cp -r ./artifacts/{{chain}} {{local_artifacts_dir}}
+
+_merge-external-libraries deploy_config_path broadcast_path:
     #!/usr/bin/env bash
     set -euo pipefail
     # Requires jq of a version that keeps the uint256 literals intact, @see `just check-tools`.
     merged=$(mktemp)
     trap 'rm -f "$merged"' EXIT
-    jq --slurpfile tx "{{transactions_path}}" -f script/mergeExternalLibraries.jq "{{deploy_config_path}}" > "$merged"
+    jq --slurpfile tx "{{broadcast_path}}" -f script/mergeExternalLibraries.jq "{{deploy_config_path}}" > "$merged"
     mv "$merged" "{{deploy_config_path}}"
 
 # Shared local fork helpers
@@ -258,15 +257,17 @@ test-gloas-verifier-local module *args:
 
     eval "$(just _fork-up-and-down)"
 
-    local_dir=./artifacts/local/gloas-verifier/{{lowercase(module)}}/
     local_private_key="$(just _local-private-key)"
-    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} "${local_dir}" "" --broadcast --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
+    just deploy-gloas-verifier {{module}} --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
 
-    export DEPLOY_CONFIG="${local_dir}$(just _gloas-verifier-config-name {{module}})"
+    export DEPLOY_CONFIG={{local_artifacts_dir}}/{{lowercase(module)}}/$(just _gloas-verifier-config-name {{module}})
+    export VOTES_DIR={{local_artifacts_dir}}/votes
     export RPC_URL={{anvil_rpc_url}}
 
     forge test --match-contract '^VerifierDeploymentTest$' -vvv {{args}}
-    just vote-gloas-verifier
+    export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
+    just vote-pending
+    just test-votes {{args}}
     just test-integration {{args}}
 
 # Run all unit tests
@@ -287,6 +288,23 @@ test-deployment-full-afterVote *args:
 test-integration *args:
     forge test --match-path 'test/fork/integration/**' \
         -vvv --show-progress --summary --detailed {{args}}
+
+# Run all integration tests on a local fork with the pending votes of the chain simulated
+test-integration-fork *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+    export RPC_URL={{anvil_rpc_url}}
+    export VOTE_PREV_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
+    just vote-pending
+    just test-votes {{args}}
+    just test-integration {{args}}
+
+# Run the tests of the pending votes simulated right after VOTE_PREV_BLOCK.
+# One thread, as concurrent reads of past blocks through anvil are flaky.
+test-votes *args:
+    VOTES_DIR={{votes_dir}} forge test --match-path 'test/fork/votes/**' --threads 1 -vvv {{args}}
 
 # Run tests for utility contracts
 test-utils *args:
@@ -335,12 +353,13 @@ gas-report:
     print(f"Done. Gas report saved to {filename}")
 
 coverage *args:
-    FOUNDRY_PROFILE=coverage forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' {{args}}
+    forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' {{args}}
 
 # Run coverage and save the report in LCOV file.
 coverage-lcov *args:
-    FOUNDRY_PROFILE=coverage forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' --report lcov {{args}}
+    forge coverage --no-match-coverage '(test|script)' --no-match-path 'test/fork/*' --report lcov {{args}}
 
+# Prints the address-to-contract map for diffyscan, e.g. `just diffyscan-contracts broadcast/DeployMainnet.s.sol/1`
 diffyscan-contracts *args:
     yarn generate:diffyscan {{args}}
 
@@ -412,40 +431,11 @@ make-fork *args:
 kill-fork:
     @-pkill anvil && just _warn "anvil process is killed"
 
-deploy-utils module_name contract_name *args:
-    just _deploy-utils {{module_name}} {{contract_name}} {{anvil_rpc_url}} ./artifacts/latest/{{module_name}}/utils/{{contract_name}}/ "" --broadcast {{args}}
+deploy-gloas-verifier module *args: _local-artifacts
+    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} {{local_artifacts_dir}} --broadcast {{args}}
 
-deploy-utils-dry module_name contract_name *args:
-    just _deploy-utils {{module_name}} {{contract_name}} $RPC_URL ./artifacts/local/{{module_name}}/utils/{{contract_name}}/ "/dry-run" {{args}}
-
-deploy-utils-live module_name contract_name *args:
-    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    just _deploy-utils-live-confirmed {{module_name}} {{contract_name}} {{args}}
-
-[confirm("You are about to broadcast utility contract deployment transactions to the network. Are you sure?")]
-_deploy-utils-live-confirmed module_name contract_name *args:
-    just _assert-clean-workspace
-    just _deploy-utils {{module_name}} {{contract_name}} $RPC_URL ./artifacts/latest/{{module_name}}/utils/{{contract_name}}/ "" --broadcast --verify {{args}}
-
-_deploy-utils module_name contract_name rpc_url artifacts_dir dry-prefix *args:
-    #!/usr/bin/env bash
-    CHAIN_LOWER="{{chain}}"
-    CHAIN_CAPITALIZED="${CHAIN_LOWER^}"
-
-    mkdir -p {{artifacts_dir}}
-    ARTIFACTS_DIR={{artifacts_dir}} \
-    forge script script/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol:Deploy{{contract_name}}${CHAIN_CAPITALIZED} --sig="run(string)" \
-        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD`
-
-    just _copy-file \
-        ./broadcast/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
-        {{artifacts_dir}}/transactions.json
-
-deploy-gloas-verifier module *args:
-    just _deploy-gloas-verifier {{module}} {{anvil_rpc_url}} ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast {{args}}
-
-deploy-gloas-verifier-dry module *args:
-    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/local/{{lowercase(module)}}/ "/dry-run" {{args}}
+deploy-gloas-verifier-dry module *args: _local-artifacts
+    just _deploy-gloas-verifier {{module}} $RPC_URL {{local_artifacts_dir}} {{args}}
 
 deploy-gloas-verifier-live module *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
@@ -454,27 +444,19 @@ deploy-gloas-verifier-live module *args:
 [confirm("You are about to broadcast a Gloas Verifier deployment transaction to the network. Are you sure?")]
 _deploy-gloas-verifier-live-confirmed module *args:
     just _assert-clean-workspace
-    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/latest/{{lowercase(module)}}/ "" --broadcast --verify {{args}}
+    just _deploy-gloas-verifier {{module}} $RPC_URL ./artifacts/{{chain}} --broadcast --verify {{args}}
 
 _gloas-verifier-config-name module:
     @echo {{ if lowercase(module) == "csm" { "upgrade-v3-" + chain + ".json" } else { "deploy-" + chain + ".json" } }}
 
-# Appends the Gloas Verifier to a copy of the module artifact placed in artifacts_dir
-_deploy-gloas-verifier module rpc_url artifacts_dir dry-prefix *args:
+_deploy-gloas-verifier module rpc_url artifacts_dir *args:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    config_name="$(just _gloas-verifier-config-name {{module}})"
-    params_key={{ if lowercase(module) == "curated" { ".CuratedDeployParams" } else { ".DeployParams" } }}
-    just _copy-file ./artifacts/{{chain}}/{{lowercase(module)}}/${config_name} {{artifacts_dir}}${config_name}
-
-    DEPLOY_CONFIG={{artifacts_dir}}${config_name} \
+    DEPLOY_CONFIG={{artifacts_dir}}/{{lowercase(module)}}/$(just _gloas-verifier-config-name {{module}}) \
+    VOTES_DIR={{artifacts_dir}}/votes \
     forge script script/DeployGloasVerifier{{chain_script_suffix}}.s.sol:DeployGloasVerifier{{chain_script_suffix}}{{module}} --sig="run(string,string)" \
-        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` "${params_key}"
-
-    just _copy-file \
-        ./broadcast/DeployGloasVerifier{{chain_script_suffix}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
-        {{artifacts_dir}}transactions-gloas-verifier.json
+        --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD` {{lowercase(module)}}
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"

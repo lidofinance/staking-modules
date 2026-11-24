@@ -107,8 +107,7 @@ contract DeploymentHelpers is Asserts {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
-        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/<module>/utils/<name>/deploy-<chain>.json)
-        string UTILS_DEPLOY_CONFIG;
+        uint256 VOTE_PREV_BLOCK;
     }
 
     // Intersection of DeployParams and CuratedDeployParams
@@ -186,8 +185,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierV3;
-        address verifierGloas;
         address hashConsensus;
         address lidoLocator;
         address circuitBreaker;
@@ -211,7 +208,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierGloas;
         address hashConsensus;
         address metaRegistry;
         address metaRegistryImpl;
@@ -226,7 +222,7 @@ contract DeploymentHelpers is Asserts {
         Env memory env = Env(
             vm.envOr("RPC_URL", string("")),
             vm.envOr("DEPLOY_CONFIG", string("")),
-            vm.envOr("UTILS_DEPLOY_CONFIG", string(""))
+            vm.envOr("VOTE_PREV_BLOCK", uint256(0))
         );
         vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
         vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
@@ -309,18 +305,7 @@ contract DeploymentHelpers is Asserts {
         vm.label(deploymentConfig.feeDistributorImpl, "feeDistributorImpl");
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        if (vm.keyExistsJson(config, ".VerifierV3")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV3");
-            vm.label(deploymentConfig.verifierV3, "verifierV3");
-        } else if (vm.keyExistsJson(config, ".VerifierV2")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV2");
-            vm.label(deploymentConfig.verifierV3, "verifierV3");
-        }
         vm.label(deploymentConfig.verifier, "verifier");
-        if (vm.keyExistsJson(config, ".VerifierGloas")) {
-            deploymentConfig.verifierGloas = vm.parseJsonAddress(config, ".VerifierGloas");
-            vm.label(deploymentConfig.verifierGloas, "verifierGloas");
-        }
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "hashConsensus");
@@ -386,10 +371,6 @@ contract DeploymentHelpers is Asserts {
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
         vm.label(deploymentConfig.verifier, "curatedVerifier");
-        if (vm.keyExistsJson(config, ".VerifierGloas")) {
-            deploymentConfig.verifierGloas = vm.parseJsonAddress(config, ".VerifierGloas");
-            vm.label(deploymentConfig.verifierGloas, "curatedVerifierGloas");
-        }
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
@@ -488,6 +469,7 @@ contract DeploymentHelpers is Asserts {
         // Module
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
+        dst.topUpAllocationEnabler = src.topUpAllocationEnabler;
 
         // ParametersRegistry
         dst.queueLowestPriority = src.queueLowestPriority;
@@ -812,11 +794,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        verifier = Verifier(
-            deploymentConfig.verifierGloas != address(0)
-                ? deploymentConfig.verifierGloas
-                : (deploymentConfig.verifierV3 == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierV3)
-        );
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());
@@ -855,9 +833,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        verifier = Verifier(
-            deploymentConfig.verifierGloas == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierGloas
-        );
+        // The Curated module runs `CuratedVerifier`, it shares the role and pause interface used by the tests.
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());
@@ -995,6 +972,8 @@ interface IForkIntegrationHelpers {
         uint256 keysCount
     ) external returns (uint256 nodeOperatorId);
 
+    function addDepositedNodeOperator(address from, uint256 keysCount) external returns (uint256 noId);
+
     function getDepositableNodeOperator(address nodeOperatorAddress) external returns (uint256 noId, uint256 keysCount);
 
     function getDepositedNodeOperator(address nodeOperatorAddress, uint256 keysCount) external returns (uint256 noId);
@@ -1030,6 +1009,12 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         while (operatorsLeft > 0) {
             operatorsLeft = module.batchDepositInfoUpdate(batchSize);
         }
+    }
+
+    /// @dev Adds a new node operator and deposits all its keys.
+    function addDepositedNodeOperator(address from, uint256 keysCount) external override returns (uint256 noId) {
+        noId = _addNodeOperator(from, keysCount);
+        _depositKeys(noId, keysCount);
     }
 
     function getDepositedNodeOperator(
@@ -1091,6 +1076,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 
     PermissionlessGate internal permissionlessGate;
     error TopUpQueueIsEmpty();
+    error NotEnoughTopUpQueueCapacity(uint256 length, uint256 keysCount);
 
     constructor(
         CSModule module_,
@@ -1112,6 +1098,8 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         bool extendedPermissions,
         uint256 keysCount
     ) external override returns (uint256 nodeOperatorId) {
+        _ensureTopUpQueueCapacity(keysCount);
+
         (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         uint256 amount = accounting.getBondAmountByKeysCount(keysCount, permissionlessGate.CURVE_ID());
         vm.deal(from, amount);
@@ -1140,7 +1128,10 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) return (batch.noId(), batch.keys());
+            if (!batch.isNil()) {
+                _ensureTopUpQueueCapacity(batch.keys());
+                return (batch.noId(), batch.keys());
+            }
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
@@ -1164,20 +1155,21 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 
-    function _depositKeys(uint256 noId, uint256 keysCount) internal override {
-        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
-        // Depositable keys are capped by the top-up queue capacity, so a queue already filled by existing operators
-        // would leave the freshly added keys undeposited.
-        if (enabled && limit < type(uint8).max) {
-            bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
-            if (!module.hasRole(role, address(this))) {
-                address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
-                vm.prank(admin);
-                module.grantRole(role, address(this));
-            }
-            module.setTopUpQueueLimit(type(uint8).max);
+    /// @dev Deposited keys enter the top-up queue, so its capacity caps depositable keys. Lifts the queue limit to fit
+    ///      `keysCount` keys into a queue filled by existing operators. Ideally the queue should be drained instead.
+    function _ensureTopUpQueueCapacity(uint256 keysCount) internal {
+        (bool enabled, uint256 limit, uint256 length, ) = module.getTopUpQueue();
+        if (!enabled) return;
+        if (length + keysCount > type(uint8).max) revert NotEnoughTopUpQueueCapacity(length, keysCount);
+        if (limit == type(uint8).max) return;
+
+        bytes32 role = module.MANAGE_TOP_UP_QUEUE_ROLE();
+        if (!module.hasRole(role, address(this))) {
+            address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+            vm.prank(admin);
+            module.grantRole(role, address(this));
         }
-        super._depositKeys(noId, keysCount);
+        module.setTopUpQueueLimit(type(uint8).max);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
@@ -1254,6 +1246,12 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keyIndex, bytes memory pubkey) {
         (noId, keyIndex) = this.getDepositedNodeOperatorWithSequentialActiveKeys(nodeOperatorAddress, 1);
+        ICuratedModule cm = ICuratedModule(address(module));
+        if (!cm.isTopUpAllocationEnabled(noId)) {
+            address enabler = module.getRoleMember(cm.ENABLE_TOP_UP_ALLOCATION_ROLE(), 0);
+            vm.prank(enabler);
+            cm.enableTopUpAllocation(noId);
+        }
         pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 

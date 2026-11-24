@@ -54,6 +54,7 @@
     "chargePenaltyRecipient": "0x0534aA41907c9631fae990960bCC72d75fA7cfeD",
     "moduleType": "0x637572617465642d6f6e636861696e2d76320000000000000000000000000000",
     "generalDelayedPenaltyReporter": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
+    "topUpAllocationEnabler": "0x84DffcfB232594975C608DE92544Ff239a24c9E9",
     "queueLowestPriority": 0,
     "defaultKeyRemovalCharge": 0,
     "defaultGeneralDelayedPenaltyAdditionalFine": 100000000000000000,
@@ -607,7 +608,7 @@
     "0x28518be9894C20135F280a9539617783b08a04c7"
   ],
   "CuratedModule": "0x87EB69Ae51317405FD285efD2326a4a11f6173b9",
-  "CuratedModuleImpl": "0xf01b6b3E27fD3A4c063E391A0714c770d9422CE8",
+  "CuratedModuleImpl": "0x0d7cBAf91cc6cbfB72ea70ec09c04855A06ac7Ee",
   "Ejector": "0xfDbde2B3554B69C84e0f8d7daB68D390Ff0f4394",
   "ExitPenalties": "0xad79e1d3B380cEb1a0e188fBAB91f85A446E9E54",
   "ExitPenaltiesImpl": "0xBed0DC3db54ff9cc0B5C1B17292d85681783b029",
@@ -623,14 +624,16 @@
   "ParametersRegistryImpl": "0x4F5C45d88Fa9fFd409b5a6D933BC41256a893cfb",
   "ValidatorStrikes": "0x4c427Ec826F403339719C0FABfb3209e80939eA6",
   "ValidatorStrikesImpl": "0xc6215d060F26e1F6F34d53d09C626e46bf4a46A3",
-  "Verifier": "0x209190Ebc2Be80367a15d05e626784Eb94d6A880",
-  "AssetRecovererLib": "0x37aDa408AE3c3992953688e2CCb9eE7a3dfdA902",
-  "BondCurvesLib": "0xC4511d09639e5E174506083443da230D39196323",
-  "GeneralPenaltyLib": "0xF05545ED71c60bBba6E73B6B70B15D4f5F22C0f4",
-  "NOAddresses.sol": "0x9D9c8799189c797f6e2dA74F71aDF84492adA7D3",
-  "NodeOperatorOps": "0xDD42EE5D54A1822021782F3F455bb99fBC19499A",
-  "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
-  "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
-  "CuratedDepositAllocator": "0xa4fCD4dDa0e4a847142E3592C97c77d8B9B3Cf5F",
-  "git-ref": "a6be775483e17d76718f8852428b5251a75c6429"
+  "Verifier": "0xd82f10880590dc6C67D1e84098357DBbc88058EA",
+  "git-ref": "aef05f5af13e4065cef795cf4ff954c0a7072a7e",
+  "ExternalLibraries": {
+    "AssetRecovererLib": "0x37aDa408AE3c3992953688e2CCb9eE7a3dfdA902",
+    "BondCurvesLib": "0xC4511d09639e5E174506083443da230D39196323",
+    "GeneralPenalty": "0xF05545ED71c60bBba6E73B6B70B15D4f5F22C0f4",
+    "NOAddresses": "0x9D9c8799189c797f6e2dA74F71aDF84492adA7D3",
+    "NodeOperatorOps": "0xDD42EE5D54A1822021782F3F455bb99fBC19499A",
+    "StakeTracker": "0xbb6E4Db18182d45038F91B9F1195291c206fd8d2",
+    "WithdrawnValidatorLib": "0x3bf9674f062aF9BA94FdAe9Fcdf2D0001FFf0a3A",
+    "CuratedDepositAllocator": "0x691e8BA3DBf3E2E33a8C5641B15d4d24F3837F37"
+  }
 }

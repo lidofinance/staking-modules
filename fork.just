@@ -10,12 +10,8 @@ get-curve-info id:
 vote-add-module:
     just _impersonate-script SimulateVote --sig="addModule"
 
-vote-upgrade:
-    just _impersonate-script SimulateVote --sig="upgrade"
-    just _impersonate-script SimulateVote --sig="postUpgrade"
-
-vote-gloas-verifier:
-    just _impersonate-script SimulateVote --sig="gloasVerifier"
+vote-pending:
+    VOTES_DIR={{votes_dir}} just _impersonate-script SimulateVote
 
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"

@@ -13,7 +13,7 @@ import { FeeDistributor } from "../../src/FeeDistributor.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { FeeOracle } from "../../src/FeeOracle.sol";
-import { Verifier } from "../../src/Verifier.sol";
+import { CuratedVerifier } from "../../src/CuratedVerifier.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
@@ -22,7 +22,6 @@ import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
-import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
@@ -93,6 +92,7 @@ struct CuratedDeployParams {
     // Module
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
+    address topUpAllocationEnabler;
     // ParametersRegistry
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
@@ -141,7 +141,7 @@ abstract contract DeployBase is Script {
     ExitPenalties public exitPenalties;
     Ejector public ejector;
     ValidatorStrikes public strikes;
-    Verifier public verifier;
+    CuratedVerifier public verifier;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
@@ -249,14 +249,13 @@ abstract contract DeployBase is Script {
                 )
             );
 
-            verifier = new Verifier({
+            verifier = new CuratedVerifier({
                 withdrawalCredentials: toWC(locator.withdrawalVault(), config.verifierWcType),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 gloasSlot: Slot.wrap(uint64(config.verifierGloasSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
-                minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer
             });
 
@@ -455,6 +454,7 @@ abstract contract DeployBase is Script {
 
             curatedModule.grantRole(curatedModule.PAUSE_ROLE(), config.resealManager);
             curatedModule.grantRole(curatedModule.RESUME_ROLE(), config.resealManager);
+            curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), config.topUpAllocationEnabler);
             accounting.grantRole(accounting.PAUSE_ROLE(), config.resealManager);
             accounting.grantRole(accounting.RESUME_ROLE(), config.resealManager);
             oracle.grantRole(oracle.PAUSE_ROLE(), config.resealManager);

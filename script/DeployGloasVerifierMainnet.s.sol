@@ -52,7 +52,8 @@ contract DeployGloasVerifierMainnetCurated is DeployGloasVerifierMainnet {
     constructor() {
         module = 0xDa5F930cE326EB5205085D66c72A4E79d60cB8C1;
 
+        curated = true;
+
         config.verifierWcType = WCType.Compounding;
-        config.minWithdrawalRatio = 9950;
     }
 }

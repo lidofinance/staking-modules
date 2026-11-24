@@ -106,6 +106,10 @@ interface IVerifier {
 
     function GI_VALIDATORS() external view returns (GIndex);
 
+    function GI_BALANCES_PRE_GLOAS() external view returns (GIndex);
+
+    function GI_BALANCES() external view returns (GIndex);
+
     function GI_HISTORICAL_SUMMARIES_PRE_GLOAS() external view returns (GIndex);
 
     function GI_HISTORICAL_SUMMARIES() external view returns (GIndex);
