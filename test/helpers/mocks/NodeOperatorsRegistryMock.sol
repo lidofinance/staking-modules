@@ -3,17 +3,10 @@
 
 pragma solidity 0.8.33;
 
-import { INodeOperatorsRegistry } from "src/interfaces/INodeOperatorsRegistry.sol";
-
-contract NodeOperatorsRegistryMock is INodeOperatorsRegistry {
+contract NodeOperatorsRegistryMock {
     struct NodeOperatorData {
-        bool active;
-        string name;
-        address rewardAddress;
-        uint64 totalVettedValidators;
-        uint64 totalExitedValidators;
-        uint64 totalAddedValidators;
-        uint64 totalDepositedValidators;
+        uint256 totalExitedValidators;
+        uint256 totalDepositedValidators;
     }
 
     uint256 internal nodeOperatorsCount;
@@ -31,29 +24,10 @@ contract NodeOperatorsRegistryMock is INodeOperatorsRegistry {
         return nodeOperatorsCount;
     }
 
-    function getNodeOperator(
-        uint256 nodeOperatorId,
-        bool
-    )
-        external
-        view
-        returns (
-            bool active,
-            string memory name,
-            address rewardAddress,
-            uint64 totalVettedValidators,
-            uint64 totalExitedValidators,
-            uint64 totalAddedValidators,
-            uint64 totalDepositedValidators
-        )
-    {
+    function getNodeOperatorSummary(
+        uint256 nodeOperatorId
+    ) external view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256) {
         NodeOperatorData storage data = nodeOperators[nodeOperatorId];
-        active = data.active;
-        name = data.name;
-        rewardAddress = data.rewardAddress;
-        totalVettedValidators = data.totalVettedValidators;
-        totalExitedValidators = data.totalExitedValidators;
-        totalAddedValidators = data.totalAddedValidators;
-        totalDepositedValidators = data.totalDepositedValidators;
+        return (0, 0, 0, 0, 0, data.totalExitedValidators, data.totalDepositedValidators, 0);
     }
 }
