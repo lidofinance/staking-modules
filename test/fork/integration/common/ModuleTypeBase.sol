@@ -10,6 +10,14 @@ import { InvariantAsserts } from "../../../helpers/InvariantAsserts.sol";
 abstract contract ModuleTypeBase is DeploymentFixtures, Utilities, InvariantAsserts {
     IForkIntegrationHelpers internal integrationHelpers;
 
+    /// @dev Proofs built by `test/helpers/*Proofs.sol` follow the interface of the Gloas verifiers.
+    modifier whenGloasVerifier() {
+        try verifier.GLOAS_SLOT() {} catch {
+            vm.skip(true, "Gloas verifier is not deployed");
+        }
+        _;
+    }
+
     function _setUpModule() internal virtual;
 
     function _assertModuleEnqueuedCount() internal virtual;
