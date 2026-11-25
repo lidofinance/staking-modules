@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator } from "./lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, gweiToWei } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { GIndices } from "./lib/GIndices.sol";
@@ -14,7 +14,6 @@ import { SSZ } from "./lib/SSZ.sol";
 import { ICuratedVerifier } from "./interfaces/ICuratedVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
-import { gweiToWei } from "./Verifier.sol";
 
 /// @notice A copy of `Verifier` for the Curated Module. Validators are reported as withdrawn once they reach their
 ///         withdrawable epoch, which supports both regular exits and outgoing consolidations. Withdrawal proofs are
@@ -308,16 +307,7 @@ contract CuratedVerifier is ICuratedVerifier, AccessControlEnumerable, PausableW
         // `BeaconState.balances` is a list of uint64 values. SSZ packs 4 individual values into a single 32-byte node.
         // Hence, balances[0-3] share the same generalized index.
         gI = _getValidatorBalanceGI(validatorIndex / 4, stateSlot);
-
-        // prettier-ignore
-        assembly ("memory-safe") {
-            let valueLeftMostBit := mul(64, mod(validatorIndex, 4))
-            balanceNode := shl(valueLeftMostBit, balanceNode) // Shift the value to the left side.
-            balanceNode := and(balanceNode, 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000)
-        }
-        // The values are encoded in little-endian order, so we need to convert them to big-endian byte order first.
-        balanceNode = SSZ.endianReverse(balanceNode);
-        balanceGwei = uint64(uint256(balanceNode));
+        balanceGwei = SSZ.uint64At(balanceNode, validatorIndex);
     }
 
     function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {

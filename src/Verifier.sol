@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, Withdrawal, gweiToWei } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { GIndices } from "./lib/GIndices.sol";
@@ -15,21 +15,7 @@ import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
-/// @notice Convert withdrawal amount to wei
-/// @param withdrawal Withdrawal struct
-function amountWei(Withdrawal memory withdrawal) pure returns (uint256) {
-    return gweiToWei(withdrawal.amount);
-}
-
-/// @notice Convert gwei to wei
-/// @param amount Amount in gwei
-function gweiToWei(uint64 amount) pure returns (uint256) {
-    return uint256(amount) * 1 gwei;
-}
-
 contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
-    using { amountWei } for Withdrawal;
-
     using SSZ for BeaconBlockHeader;
     using SSZ for Withdrawal;
     using SSZ for Validator;
@@ -417,16 +403,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // `BeaconState.balances` is a list of uint64 values. SSZ packs 4 individual values into a single 32-byte node.
         // Hence, balances[0-3] share the same generalized index.
         gI = _getValidatorBalanceGI(validatorIndex / 4, stateSlot);
-
-        // prettier-ignore
-        assembly ("memory-safe") {
-            let valueLeftMostBit := mul(64, mod(validatorIndex, 4))
-            balanceNode := shl(valueLeftMostBit, balanceNode) // Shift the value to the left side.
-            balanceNode := and(balanceNode, 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000)
-        }
-        // The values are encoded in little-endian order, so we need to convert them to big-endian byte order first.
-        balanceNode = SSZ.endianReverse(balanceNode);
-        balanceGwei = uint64(uint256(balanceNode));
+        balanceGwei = SSZ.uint64At(balanceNode, validatorIndex);
     }
 
     function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {

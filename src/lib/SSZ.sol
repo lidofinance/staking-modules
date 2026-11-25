@@ -176,4 +176,17 @@ library SSZ {
         v = (v >> 128) | (v << 128);
         return v;
     }
+
+    /// @notice Returns the `index`-th item of a `uint64` list, e.g. `BeaconState.balances`, from its node.
+    /// @dev SSZ packs 4 `uint64` values into a single 32-byte node, so the item is at `index % 4` in the node.
+    function uint64At(bytes32 node, uint256 index) internal pure returns (uint64 value) {
+        // prettier-ignore
+        assembly ("memory-safe") {
+            let valueLeftMostBit := mul(64, mod(index, 4))
+            node := shl(valueLeftMostBit, node) // Shift the value to the left side.
+            node := and(node, 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000)
+        }
+        // The values are encoded in little-endian order, so we need to convert them to big-endian byte order first.
+        value = uint64(uint256(endianReverse(node)));
+    }
 }

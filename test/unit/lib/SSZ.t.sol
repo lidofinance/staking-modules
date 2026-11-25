@@ -79,6 +79,29 @@ contract SSZTest is Utilities, Test {
         assertEq(n, v);
     }
 
+    function test_uint64At() public pure {
+        bytes32 node = 0x1112131415161718212223242526272831323334353637384142434445464748;
+        assertEq(SSZ.uint64At(node, 0), 0x1817161514131211);
+        assertEq(SSZ.uint64At(node, 1), 0x2827262524232221);
+        assertEq(SSZ.uint64At(node, 2), 0x3837363534333231);
+        assertEq(SSZ.uint64At(node, 3), 0x4847464544434241);
+    }
+
+    function test_uint64At_ItemOfLaterNode() public pure {
+        bytes32 node = 0x1112131415161718212223242526272831323334353637384142434445464748;
+        assertEq(SSZ.uint64At(node, 4), 0x1817161514131211);
+        assertEq(SSZ.uint64At(node, 7), 0x4847464544434241);
+    }
+
+    function testFuzz_uint64At(bytes32 node, uint256 index) public pure {
+        uint256 offset = (index % 4) * 8;
+        uint64 expected;
+        for (uint256 i; i < 8; ++i) {
+            expected |= uint64(uint8(node[offset + i])) << (8 * i);
+        }
+        assertEq(SSZ.uint64At(node, index), expected);
+    }
+
     function test_withdrawalRoot() public pure {
         Withdrawal memory w = Withdrawal({
             index: 15213404,
