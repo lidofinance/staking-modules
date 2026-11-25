@@ -8,7 +8,9 @@ import { WCType } from "./utils/WithdrawalCredentials.sol";
 
 abstract contract DeployGloasVerifierHoodi is DeployGloasVerifierBase {
     constructor() DeployGloasVerifierBase("hoodi", 560048) {
-        verifierGloasSlot = 4235264; // GLOAS_FORK_EPOCH = 4235264 / 32 = 132352, @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L49
+        // TODO: set to GLOAS_FORK_EPOCH * 32 once the Hoodi fork is scheduled
+        // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml
+        verifierGloasSlot = type(uint64).max;
 
         // Lido addresses
         config.lidoLocatorAddress = 0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8;

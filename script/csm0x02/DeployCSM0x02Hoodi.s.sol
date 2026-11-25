@@ -36,7 +36,9 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
 
         // Verifier
         config.verifierFirstSupportedSlot = 2048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L41
-        config.verifierGloasSlot = 132352 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L49
+        // TODO: set to GLOAS_FORK_EPOCH * config.slotsPerEpoch once the Hoodi fork is scheduled
+        // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml
+        config.verifierGloasSlot = type(uint64).max;
         config.verifierWcType = WCType.Compounding;
         config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
         config.minWithdrawalRatio = 9900;
