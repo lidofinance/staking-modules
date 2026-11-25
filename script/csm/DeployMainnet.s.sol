@@ -36,6 +36,8 @@ contract DeployMainnet is DeployBase {
 
         // Verifier
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
+        // TODO: set to GLOAS_FORK_EPOCH * config.slotsPerEpoch once the mainnet fork is scheduled
+        // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml
         config.verifierGloasSlot = type(uint64).max;
         config.verifierWcType = WCType.Eth1;
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
