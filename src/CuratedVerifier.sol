@@ -307,16 +307,7 @@ contract CuratedVerifier is ICuratedVerifier, AccessControlEnumerable, PausableW
         // `BeaconState.balances` is a list of uint64 values. SSZ packs 4 individual values into a single 32-byte node.
         // Hence, balances[0-3] share the same generalized index.
         gI = _getValidatorBalanceGI(validatorIndex / 4, stateSlot);
-
-        // prettier-ignore
-        assembly ("memory-safe") {
-            let valueLeftMostBit := mul(64, mod(validatorIndex, 4))
-            balanceNode := shl(valueLeftMostBit, balanceNode) // Shift the value to the left side.
-            balanceNode := and(balanceNode, 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000)
-        }
-        // The values are encoded in little-endian order, so we need to convert them to big-endian byte order first.
-        balanceNode = SSZ.endianReverse(balanceNode);
-        balanceGwei = uint64(uint256(balanceNode));
+        balanceGwei = SSZ.uint64At(balanceNode, validatorIndex);
     }
 
     function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
