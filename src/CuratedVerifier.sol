@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator } from "./lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, gweiToWei } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { GIndices } from "./lib/GIndices.sol";
@@ -14,7 +14,6 @@ import { SSZ } from "./lib/SSZ.sol";
 import { ICuratedVerifier } from "./interfaces/ICuratedVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
-import { gweiToWei } from "./Verifier.sol";
 
 /// @notice A copy of `Verifier` for the Curated Module. Validators are reported as withdrawn once they reach their
 ///         withdrawable epoch, which supports both regular exits and outgoing consolidations. Withdrawal proofs are

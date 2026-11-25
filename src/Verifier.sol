@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, Withdrawal, gweiToWei } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { GIndices } from "./lib/GIndices.sol";
@@ -15,21 +15,7 @@ import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
-/// @notice Convert withdrawal amount to wei
-/// @param withdrawal Withdrawal struct
-function amountWei(Withdrawal memory withdrawal) pure returns (uint256) {
-    return gweiToWei(withdrawal.amount);
-}
-
-/// @notice Convert gwei to wei
-/// @param amount Amount in gwei
-function gweiToWei(uint64 amount) pure returns (uint256) {
-    return uint256(amount) * 1 gwei;
-}
-
 contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
-    using { amountWei } for Withdrawal;
-
     using SSZ for BeaconBlockHeader;
     using SSZ for Withdrawal;
     using SSZ for Validator;
