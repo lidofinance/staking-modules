@@ -6,12 +6,11 @@ import { Test } from "forge-std/Test.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { Ejector } from "src/Ejector.sol";
 import { IEjector } from "src/interfaces/IEjector.sol";
-import { ITriggerableWithdrawalsGateway, ValidatorData } from "src/interfaces/ITriggerableWithdrawalsGateway.sol";
+import { ITriggerableWithdrawalsGateway, WithdrawalIntent } from "src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
-import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { TWGMock } from "../helpers/mocks/TWGMock.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { ValidatorStrikesMock } from "../helpers/mocks/ValidatorStrikesMock.sol";
@@ -20,7 +19,6 @@ contract EjectorTestBase is Test, Utilities, Fixtures {
     Ejector internal ejector;
     CSMMock internal csm;
     ValidatorStrikesMock internal strikes;
-    StakingRouterMock internal stakingRouter;
     IAccounting internal accounting;
     TWGMock internal twg;
 
@@ -28,21 +26,15 @@ contract EjectorTestBase is Test, Utilities, Fixtures {
     address internal admin;
     address internal refundRecipient;
     uint256 internal constant NO_ID = 0;
-    uint256 internal constant ROUTER_STAKING_MODULE_ID = 1;
 
     function setUp() public {
         csm = new CSMMock();
         accounting = csm.accounting();
         strikes = new ValidatorStrikesMock();
-        stakingRouter = StakingRouterMock(csm.LIDO_LOCATOR().stakingRouter());
         twg = TWGMock(payable(csm.LIDO_LOCATOR().triggerableWithdrawalsGateway()));
         stranger = nextAddress("STRANGER");
         admin = nextAddress("ADMIN");
         refundRecipient = nextAddress("refundRecipient");
-
-        stakingRouter.addModule(ROUTER_STAKING_MODULE_ID, address(csm));
-        // Add dummy module to test module ID caching in Ejector
-        stakingRouter.addModule(ROUTER_STAKING_MODULE_ID + 1, nextAddress("dummyModule"));
 
         ejector = new Ejector(address(csm), address(strikes), admin);
     }
@@ -52,7 +44,6 @@ contract EjectorTestMisc is EjectorTestBase {
     function test_constructor() public {
         ejector = new Ejector(address(csm), address(strikes), admin);
         assertEq(address(ejector.MODULE()), address(csm));
-        assertEq(ejector.stakingModuleId(), 0);
         assertEq(ejector.STRIKES(), address(strikes));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(ejector.getRoleMember(ejector.DEFAULT_ADMIN_ROLE(), 0), admin);
@@ -143,8 +134,6 @@ contract EjectorTestMisc is EjectorTestBase {
 
 contract EjectorTestVoluntaryEject is EjectorTestBase {
     function test_voluntaryEjectByArray_SingleKey() public {
-        assertEq(ejector.stakingModuleId(), 0);
-
         uint256 keyIndex = 0;
         bytes memory pubkey = csm.getSigningKeys(0, 0, 1);
 
@@ -154,66 +143,55 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
             NodeOperatorManagementProperties(address(this), address(this), false)
         );
 
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
-        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](1);
+        intents[0] = WithdrawalIntent(0, pubkey);
 
         uint256[] memory indices = new uint256[](1);
         indices[0] = keyIndex;
         vm.expectCall(
             address(twg),
-            abi.encodeWithSelector(
-                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
-                expectedExitsData,
-                refundRecipient,
-                exitType
-            )
+            1 ether,
+            abi.encodeCall(ITriggerableWithdrawalsGateway.triggerWithdrawals, (intents, refundRecipient))
         );
-        vm.expectEmit(address(ejector));
-        emit IEjector.StakingModuleIdCached(ROUTER_STAKING_MODULE_ID);
         vm.expectEmit(address(ejector));
         emit IEjector.VoluntaryEjectionRequested({
             nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
-        ejector.voluntaryEject(NO_ID, indices, refundRecipient);
-
-        assertEq(ejector.stakingModuleId(), ROUTER_STAKING_MODULE_ID);
+        ejector.voluntaryEject{ value: 1 ether }(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_DefaultRefundRecipient() public {
         uint256 keyIndex = 0;
+        address nodeOperator = nextAddress("nodeOperator");
         bytes memory pubkey = csm.getSigningKeys(0, 0, 1);
 
         csm.mock_setNodeOperatorsCount(1);
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
         csm.mock_setNodeOperatorManagementProperties(
-            NodeOperatorManagementProperties(address(this), address(this), false)
+            NodeOperatorManagementProperties(nodeOperator, nodeOperator, false)
         );
 
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
-        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](1);
+        intents[0] = WithdrawalIntent(0, pubkey);
 
         uint256[] memory indices = new uint256[](1);
         indices[0] = keyIndex;
         vm.expectCall(
             address(twg),
-            abi.encodeWithSelector(
-                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
-                expectedExitsData,
-                address(this),
-                exitType
-            )
+            1 ether,
+            abi.encodeCall(ITriggerableWithdrawalsGateway.triggerWithdrawals, (intents, nodeOperator))
         );
         vm.expectEmit(address(ejector));
         emit IEjector.VoluntaryEjectionRequested({
             nodeOperatorId: NO_ID,
             pubkey: pubkey,
-            refundRecipient: address(this)
+            refundRecipient: nodeOperator
         });
-        ejector.voluntaryEject(NO_ID, indices, address(0));
+        vm.deal(nodeOperator, 1 ether);
+        vm.prank(nodeOperator);
+        ejector.voluntaryEject{ value: 1 ether }(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_MultipleKeys() public {
@@ -226,14 +204,13 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
             NodeOperatorManagementProperties(address(this), address(this), false)
         );
 
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](keysCount);
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](keysCount);
         bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * i, 48);
-            expectedExitsData[i] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
+            intents[i] = WithdrawalIntent(0, pubkey);
             emittedPubkeys[i] = pubkey;
         }
-        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         uint256[] memory indices = new uint256[](keysCount);
         for (uint256 i = 0; i < keysCount; i++) {
@@ -241,12 +218,8 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         }
         vm.expectCall(
             address(twg),
-            abi.encodeWithSelector(
-                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
-                expectedExitsData,
-                refundRecipient,
-                exitType
-            )
+            1 ether,
+            abi.encodeCall(ITriggerableWithdrawalsGateway.triggerWithdrawals, (intents, refundRecipient))
         );
         for (uint256 i; i < keysCount; ++i) {
             vm.expectEmit(address(ejector));
@@ -256,7 +229,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
                 refundRecipient: refundRecipient
             });
         }
-        ejector.voluntaryEject(NO_ID, indices, refundRecipient);
+        ejector.voluntaryEject{ value: 1 ether }(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_nonSequentialIndices() public {
@@ -274,23 +247,18 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         indices[1] = 2;
         indices[2] = 4;
 
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](indices.length);
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](indices.length);
         bytes[] memory emittedPubkeys = new bytes[](indices.length);
         for (uint256 i; i < indices.length; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * indices[i], 48);
-            expectedExitsData[i] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
+            intents[i] = WithdrawalIntent(0, pubkey);
             emittedPubkeys[i] = pubkey;
         }
-        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         vm.expectCall(
             address(twg),
-            abi.encodeWithSelector(
-                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
-                expectedExitsData,
-                refundRecipient,
-                exitType
-            )
+            1 ether,
+            abi.encodeCall(ITriggerableWithdrawalsGateway.triggerWithdrawals, (intents, refundRecipient))
         );
         for (uint256 i; i < indices.length; ++i) {
             vm.expectEmit(address(ejector));
@@ -301,7 +269,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
             });
         }
 
-        ejector.voluntaryEject(NO_ID, indices, refundRecipient);
+        ejector.voluntaryEject{ value: 1 ether }(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_refund() public {
@@ -355,8 +323,6 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         csm.mock_setNodeOperatorManagementProperties(
             NodeOperatorManagementProperties(address(this), address(this), false)
         );
-
-        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         uint256[] memory indices = new uint256[](keysCount + 2);
         for (uint256 i = 0; i < keysCount; i++) {
@@ -489,71 +455,38 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         vm.expectRevert(IEjector.AlreadyWithdrawn.selector);
         ejector.voluntaryEject(NO_ID, indices, address(0));
     }
-
-    function test_voluntaryEjectByArray_revertWhen_StakingModuleIdNotFound() public {
-        uint256[] memory indices = new uint256[](1);
-        indices[0] = 0;
-
-        csm.mock_setNodeOperatorsCount(1);
-        csm.mock_setNodeOperatorTotalDepositedKeys(1);
-        csm.mock_setNodeOperatorManagementProperties(
-            NodeOperatorManagementProperties(address(this), address(this), false)
-        );
-
-        address[] memory modules = new address[](0);
-        stakingRouter.setModules(modules);
-
-        vm.expectRevert(IEjector.StakingModuleIdNotFound.selector);
-        ejector.voluntaryEject(NO_ID, indices, refundRecipient);
-    }
 }
 
 contract EjectorTestEjectBadPerformer is EjectorTestBase {
     function test_ejectBadPerformer_HappyPath() public {
-        assertEq(ejector.stakingModuleId(), 0);
-
         uint256 keyIndex = 0;
         bytes memory pubkey = csm.getSigningKeys(0, keyIndex, 1);
 
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
 
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
-        uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
+        WithdrawalIntent[] memory intents = new WithdrawalIntent[](1);
+        intents[0] = WithdrawalIntent(0, pubkey);
 
         vm.expectCall(
             address(twg),
-            abi.encodeWithSelector(
-                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
-                expectedExitsData,
-                refundRecipient,
-                exitType
-            )
+            1 ether,
+            abi.encodeCall(ITriggerableWithdrawalsGateway.triggerWithdrawals, (intents, refundRecipient))
         );
 
-        vm.expectEmit(address(ejector));
-        emit IEjector.StakingModuleIdCached(ROUTER_STAKING_MODULE_ID);
         vm.expectEmit(address(ejector));
         emit IEjector.BadPerformerEjectionRequested({
             nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
+        vm.deal(address(strikes), 1 ether);
         vm.prank(address(strikes));
-        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
-
-        assertEq(ejector.stakingModuleId(), ROUTER_STAKING_MODULE_ID);
+        ejector.ejectBadPerformer{ value: 1 ether }(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_ejectBadPerformer_revertWhen_ZeroRefundRecipient() public {
         uint256 keyIndex = 0;
-        bytes memory pubkey = csm.getSigningKeys(0, keyIndex, 1);
-
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
-
-        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
-        uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
 
         vm.expectRevert(IEjector.ZeroRefundRecipient.selector);
         vm.prank(address(strikes));
@@ -599,17 +532,6 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         vm.prank(address(strikes));
         vm.expectRevert(IEjector.AlreadyWithdrawn.selector);
         ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
-    }
-
-    function test_ejectBadPerformer_revertWhen_StakingModuleIdNotFound() public {
-        csm.mock_setNodeOperatorTotalDepositedKeys(1);
-
-        address[] memory modules = new address[](0);
-        stakingRouter.setModules(modules);
-
-        vm.prank(address(strikes));
-        vm.expectRevert(IEjector.StakingModuleIdNotFound.selector);
-        ejector.ejectBadPerformer(NO_ID, 0, refundRecipient);
     }
 
     function test_triggerableWithdrawalsGateway() public view {
