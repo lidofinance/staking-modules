@@ -78,7 +78,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @notice Returns current top-up allocation targets for all operators.
     /// @dev `target = totalCurrent * operatorWeight / totalWeight` (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with usable capacity and manual target limit not reached,
+    ///      Actual allocation recalculates shares only across operators with usable capacity and explicit target limit not reached,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currentAllocations Current operator stake in wei.

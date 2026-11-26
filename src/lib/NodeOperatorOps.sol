@@ -320,6 +320,7 @@ library NodeOperatorOps {
     }
 
     function isTargetLimitReached(NodeOperator storage no) internal view returns (bool) {
+        // TODO: Revisit with other active counts on LIP-42 exit proofs.
         unchecked {
             return no.targetLimitMode != 0 && no.targetLimit <= no.totalDepositedKeys - no.totalWithdrawnKeys;
         }
@@ -342,7 +343,6 @@ library NodeOperatorOps {
             if ($.isValidatorWithdrawn[pointer]) continue;
             if ($.isValidatorSlashed[pointer]) continue;
 
-            // Manual limits only; VEBO ejects unbonded validators.
             if (isTargetLimitReached($.nodeOperators[operatorIds[i]])) continue;
 
             // Share the remaining headroom across duplicate keys in the same batch so later entries
