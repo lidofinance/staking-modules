@@ -18,7 +18,17 @@ function lt(Slot lhs, Slot rhs) pure returns (bool) {
     return lhs.unwrap() < rhs.unwrap();
 }
 
-using { unwrap, lt as <, gt as > } for Slot global;
+function gte(Slot lhs, Slot rhs) pure returns (bool) {
+    return lhs.unwrap() >= rhs.unwrap();
+}
+
+using { unwrap, lt as <, gt as >, gte as >= } for Slot global;
+
+/// @notice Convert gwei to wei
+/// @param amount Amount in gwei
+function gweiToWei(uint64 amount) pure returns (uint256) {
+    return uint256(amount) * 1 gwei;
+}
 
 // As defined in capella/beacon-chain.md:99
 struct Withdrawal {
@@ -27,6 +37,14 @@ struct Withdrawal {
     address withdrawalAddress;
     uint64 amount;
 }
+
+/// @notice Convert withdrawal amount to wei
+/// @param withdrawal Withdrawal struct
+function amountWei(Withdrawal memory withdrawal) pure returns (uint256) {
+    return gweiToWei(withdrawal.amount);
+}
+
+using { amountWei } for Withdrawal global;
 
 // As defined in phase0/beacon-chain.md:356
 struct Validator {

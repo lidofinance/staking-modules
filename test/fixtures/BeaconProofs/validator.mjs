@@ -1,9 +1,10 @@
-// Usage: node validator.mjs <pubkey> <withdrawal_address> <slot> <balance_gwei> <active|slashed|withdrawn>
+// Usage: node validator.mjs <pubkey> <withdrawal_credentials> <slot> <balance_gwei> <active|slashed|withdrawn> <fulu|gloas>
 //
 // Builds a beacon state with a single validator and provides proofs of the validator and its balance. A withdrawn
-// validator has its balance swept by a full withdrawal in the block, with a proof of the withdrawal.
-// Used by `BeaconProofs.mockBeaconRootAndGetValidatorProof`: the key, the withdrawal address and the slot come from
-// the forked deployment.
+// validator has its balance swept by a full withdrawal in the block, with a proof of the withdrawal. The state of the
+// next block has the root of the block in `block_roots`, with a proof of the root.
+// Used by `BeaconProofs.getValidatorProof`: the key, the withdrawal credentials and the slot come from the forked
+// deployment.
 
 "use strict";
 
@@ -17,30 +18,32 @@ import { encodeParameters } from "web3-eth-abi";
 import BeaconProofs from "../../../out/BeaconProofs.sol/BeaconProofs.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
+const SLOTS_PER_HISTORICAL_ROOT = 8192;
 const EPOCHS_PER_SLASHINGS_VECTOR = 8192;
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
 const MAX_EFFECTIVE_BALANCE_GWEI = 2048e9;
 const EFFECTIVE_BALANCE_INCREMENT_GWEI = 1e9;
-const COMPOUNDING_WITHDRAWAL_PREFIX = 0x02;
 
 const VALIDATOR_INDEX = 17;
 const WITHDRAWAL_INDEX = 42;
 const WITHDRAWAL_OFFSET = 0;
-const Fork = ssz.fulu;
 
 /**
  * @param {Object} opts
  * @param {string} opts.pubkey - Validator's public key, 0x-prefixed.
- * @param {string} opts.withdrawalAddress - Address for the withdrawal credentials, 0x-prefixed.
+ * @param {string} opts.withdrawalCredentials - Validator's withdrawal credentials, 0x-prefixed.
  * @param {number} opts.slot - Slot of the state.
  * @param {number} opts.balanceGwei - The validator's balance in gwei.
  * @param {"active"|"slashed"|"withdrawn"} opts.status - Status of the validator.
+ * @param {"fulu"|"gloas"} opts.fork - Fork from the `ssz` library defining the state layout.
  */
 function main(opts) {
   assert(opts);
   assert(["active", "slashed", "withdrawn"].includes(opts.status));
+  assert(["fulu", "gloas"].includes(opts.fork));
 
   const faker = new Faker("seed sEed seEd");
+  const Fork = ssz[opts.fork];
   const stateEpoch = Math.floor(opts.slot / SLOTS_PER_EPOCH);
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
@@ -55,11 +58,7 @@ function main(opts) {
     opts.balanceGwei - (opts.balanceGwei % EFFECTIVE_BALANCE_INCREMENT_GWEI),
     MAX_EFFECTIVE_BALANCE_GWEI,
   );
-  validator.withdrawalCredentials = new Uint8Array([
-    COMPOUNDING_WITHDRAWAL_PREFIX,
-    ...new Uint8Array(11), // gap
-    ...hexStrToBytesArr(opts.withdrawalAddress),
-  ]);
+  validator.withdrawalCredentials = hexStrToBytesArr(opts.withdrawalCredentials);
   validator.activationEligibilityEpoch = 1;
   validator.activationEpoch = 2;
   validator.exitEpoch = Number.MAX_SAFE_INTEGER;
@@ -79,50 +78,53 @@ function main(opts) {
   state.slot = opts.slot;
   assert(stateEpoch - MIN_VALIDATOR_WITHDRAWABILITY_DELAY > validator.activationEpoch);
 
-  while (state.validators.length <= VALIDATOR_INDEX) {
-    state.validators.push(Validator.defaultView());
-    state.balances.push(0);
-  }
+  // Gloas lists are progressive and cannot be pushed to, so the lists are built at once.
+  state.validators = state.validators.type.toView(
+    Array.from({ length: VALIDATOR_INDEX + 1 }, () => Validator.defaultValue()),
+  );
   state.validators.set(VALIDATOR_INDEX, validator);
+  state.balances = state.balances.type.toView(new Array(VALIDATOR_INDEX + 1).fill(0));
   // The withdrawal sweeps the whole balance.
   state.balances.set(VALIDATOR_INDEX, opts.status == "withdrawn" ? 0 : opts.balanceGwei);
 
-  const recentBlock = Fork.BeaconBlock.defaultView();
-  recentBlock.slot = state.slot;
-  recentBlock.parentRoot = faker.someBytes32();
+  const block = Fork.BeaconBlock.defaultView();
+  block.slot = state.slot;
+  block.parentRoot = faker.someBytes32();
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
-  const Withdrawal = Fork.BeaconBlock.getPathInfo([
-    "body",
-    "executionPayload",
-    "withdrawals",
-    0,
-  ]).type;
+  const Withdrawal = Fork.Withdrawals.elementType;
   const withdrawal = Withdrawal.defaultView();
   let withdrawalProof = { witnesses: [] };
 
   if (opts.status == "withdrawn") {
     withdrawal.index = WITHDRAWAL_INDEX;
     withdrawal.validatorIndex = VALIDATOR_INDEX;
-    withdrawal.address = hexStrToBytesArr(opts.withdrawalAddress);
+    // The withdrawal address is the last 20 bytes of the withdrawal credentials.
+    withdrawal.address = validator.withdrawalCredentials.slice(12);
     withdrawal.amount = BigInt(opts.balanceGwei);
 
-    const withdrawals = recentBlock.body.executionPayload.withdrawals;
-    for (let i = 0; i != WITHDRAWAL_OFFSET; i++) withdrawals.push(Withdrawal.defaultView());
-    withdrawals.push(withdrawal);
-
-    // The state keeps the root of the withdrawals of the latest block. Attach the list itself to prove its items.
-    const withdrawalsRootPath = state.type.getPathInfo([
-      "latestExecutionPayloadHeader",
-      "withdrawalsRoot",
+    const withdrawals = Fork.Withdrawals.toView([
+      ...Array.from({ length: WITHDRAWAL_OFFSET }, () => Withdrawal.defaultValue()),
+      withdrawal.toValue(),
     ]);
-    state.latestExecutionPayloadHeader.withdrawalsRoot = withdrawals.hashTreeRoot();
-    state.tree.setNode(withdrawalsRootPath.gindex, withdrawals.node);
+
+    let withdrawalsPath;
+    if (opts.fork == "gloas") {
+      // The state keeps the withdrawals the payload of the block is expected to have.
+      state.payloadExpectedWithdrawals = withdrawals;
+      withdrawalsPath = state.type.getPathInfo(["payloadExpectedWithdrawals"]);
+    } else {
+      block.body.executionPayload.withdrawals = withdrawals;
+      // The state keeps the root of the withdrawals of the latest block. Attach the list itself to prove its items.
+      withdrawalsPath = state.type.getPathInfo(["latestExecutionPayloadHeader", "withdrawalsRoot"]);
+      state.latestExecutionPayloadHeader.withdrawalsRoot = withdrawals.hashTreeRoot();
+      state.tree.setNode(withdrawalsPath.gindex, withdrawals.node);
+    }
 
     withdrawalProof = createProof(state.node, {
       type: ProofType.single,
       gindex: concatGindices([
-        withdrawalsRootPath.gindex,
+        withdrawalsPath.gindex,
         withdrawals.type.getPropertyGindex(WITHDRAWAL_OFFSET),
       ]),
     });
@@ -138,17 +140,26 @@ function main(opts) {
     gindex: state.type.getPathInfo(["balances", VALIDATOR_INDEX]).gindex,
   });
 
-  recentBlock.stateRoot = state.hashTreeRoot();
+  block.stateRoot = state.hashTreeRoot();
+
+  const rootIndex = block.slot % SLOTS_PER_HISTORICAL_ROOT;
+  const nextState = Fork.BeaconState.defaultView();
+  nextState.slot = block.slot + 1;
+  nextState.blockRoots.set(rootIndex, block.hashTreeRoot());
+
+  const blockRootProof = createProof(nextState.node, {
+    type: ProofType.single,
+    gindex: nextState.type.getPathInfo(["blockRoots", rootIndex]).gindex,
+  });
+
+  const nextBlock = Fork.BeaconBlock.defaultView();
+  nextBlock.slot = nextState.slot;
+  nextBlock.parentRoot = block.hashTreeRoot();
+  nextBlock.stateRoot = nextState.hashTreeRoot();
 
   const proof = {
-    blockRoot: recentBlock.hashTreeRoot(),
-    header: {
-      slot: recentBlock.slot,
-      proposerIndex: recentBlock.proposerIndex,
-      parentRoot: recentBlock.parentRoot,
-      stateRoot: recentBlock.stateRoot,
-      bodyRoot: recentBlock.body.hashTreeRoot(),
-    },
+    blockRoot: block.hashTreeRoot(),
+    header: toHeader(block),
     validatorIndex: VALIDATOR_INDEX,
     validator: {
       pubkey: validator.pubkey,
@@ -171,6 +182,9 @@ function main(opts) {
       amount: withdrawal.amount,
     },
     withdrawalProof: withdrawalProof.witnesses,
+    nextBlockRoot: nextBlock.hashTreeRoot(),
+    nextHeader: toHeader(nextBlock),
+    blockRootProof: blockRootProof.witnesses,
   };
 
   const ffi_interface = BeaconProofs.abi.find((e) => e.name == "ffi_interface");
@@ -178,6 +192,16 @@ function main(opts) {
 
   const calldata = encodeParameters(ffi_interface.inputs, [proof]);
   console.log(calldata);
+}
+
+function toHeader(block) {
+  return {
+    slot: block.slot,
+    proposerIndex: block.proposerIndex,
+    parentRoot: block.parentRoot,
+    stateRoot: block.stateRoot,
+    bodyRoot: block.body.hashTreeRoot(),
+  };
 }
 
 /**
@@ -208,8 +232,9 @@ class Faker {
 
 main({
   pubkey: process.argv[2],
-  withdrawalAddress: process.argv[3],
+  withdrawalCredentials: process.argv[3],
   slot: Number(process.argv[4]),
   balanceGwei: Number(process.argv[5]),
   status: process.argv[6],
+  fork: process.argv[7],
 });

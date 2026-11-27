@@ -36,6 +36,8 @@
     "gIFirstHistoricalSummary": "0x000000000000000000000000000000000000000000000000000000b600000018",
     "gIFirstBalanceNode": "0x0000000000000000000000000000000000000000000000000026000000000028",
     "verifierFirstSupportedSlot": 65536,
+    "verifierGloasSlot": "18446744073709551615",
+    "verifierWcType": 1,
     "capellaSlot": 0,
     "minWithdrawalRatio": 9900,
     "defaultBondCurve": [
@@ -186,8 +188,7 @@
   "IdentifiedDVTClusterGate": "0x887F8512F9998045f4b5993e6eaa6BCfE5F02A94",
   "ValidatorStrikes": "0x8fBA385C3c334D251eE413e79d4D3890db98693c",
   "ValidatorStrikesImpl": "0x55D2206a4f7e81c170D3f5b7aFbD46B9f75Bc54d",
-  "Verifier": "0x1773b2Ff99A030F6000554Cb8A5Ec93145650cbA",
-  "VerifierV3": "0xC96406b0eADdAC5708aFCa04DcCA67BAdC9642Fd",
+  "Verifier": "0xC96406b0eADdAC5708aFCa04DcCA67BAdC9642Fd",
   "VettedGate": "0x10a254E724fe2b7f305F76f3F116a3969c53845f",
   "VettedGateFactory": "0x8B11fdbA811aeE889F8A55FF58CC0Bf0BbA800e1",
   "VettedGateImpl": "0x5Dd9dDC953f2a4352D9C8C42B8D5E2bf535e602F",

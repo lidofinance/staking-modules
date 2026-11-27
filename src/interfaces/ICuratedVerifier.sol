@@ -9,21 +9,12 @@ import { GIndex } from "../lib/GIndex.sol";
 import { IBaseModule } from "./IBaseModule.sol";
 
 interface ICuratedVerifier {
-    struct GIndices {
-        GIndex gIFirstValidatorPrev;
-        GIndex gIFirstValidatorCurr;
-        GIndex gIFirstHistoricalSummaryPrev;
-        GIndex gIFirstHistoricalSummaryCurr;
-        GIndex gIFirstBalanceNodePrev;
-        GIndex gIFirstBalanceNodeCurr;
-    }
-
     struct RecentHeaderWitness {
         BeaconBlockHeader header; // Header of a block which root is a root at rootsTimestamp.
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
 
-    // A witness for a block header which root is accessible via `historical_summaries` field.
+    // A witness for a block header which root is accessible either via historical_summaries or block_roots.
     struct HistoricalHeaderWitness {
         BeaconBlockHeader header;
         bytes32[] proof;
@@ -54,6 +45,8 @@ interface ICuratedVerifier {
 
     struct ProcessBalanceProofInput {
         RecentHeaderWitness recentBlock;
+        // The block containing the balance, proven against `recentBlock` state block roots.
+        HistoricalHeaderWitness balanceBlock;
         ValidatorWitness validator;
         BalanceWitness balance;
     }
@@ -72,15 +65,16 @@ interface ICuratedVerifier {
     error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
     error ValidatorIsWithdrawable();
-    error InvalidWithdrawalAddress();
+    error InvalidWithdrawalCredentials();
     error InvalidPublicKey();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
-    error ZeroWithdrawalAddress();
+    error ZeroWithdrawalCredentials();
     error ZeroAdminAddress();
-    error InvalidPivotSlot();
+    error InvalidGloasSlot();
     error InvalidCapellaSlot();
     error HistoricalSummaryDoesNotExist();
+    error BlockRootNotInRange();
 
     function BEACON_ROOTS() external view returns (address);
 
@@ -88,26 +82,33 @@ interface ICuratedVerifier {
 
     function SLOTS_PER_HISTORICAL_ROOT() external view returns (uint64);
 
-    function GI_FIRST_VALIDATOR_PREV() external view returns (GIndex);
+    function GI_VALIDATORS_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_VALIDATOR_CURR() external view returns (GIndex);
+    function GI_VALIDATORS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_PREV() external view returns (GIndex);
+    function GI_BALANCES_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
+    function GI_BALANCES() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_BALANCES_NODE_PREV() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES() external view returns (GIndex);
 
-    function GI_FIRST_BALANCES_NODE_CURR() external view returns (GIndex);
+    function GI_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
+
+    function GI_BLOCK_ROOTS_PRE_GLOAS() external view returns (GIndex);
+
+    function GI_BLOCK_ROOTS() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 
-    function PIVOT_SLOT() external view returns (Slot);
+    function GLOAS_SLOT() external view returns (Slot);
 
     function CAPELLA_SLOT() external view returns (Slot);
 
+    function WITHDRAWAL_CREDENTIALS() external view returns (bytes32);
+
+    /// @notice Withdrawal address encoded in the configured withdrawal credentials.
     function WITHDRAWAL_ADDRESS() external view returns (address);
 
     function MODULE() external view returns (IBaseModule);
@@ -122,8 +123,8 @@ interface ICuratedVerifier {
     /// @param data @see ProcessWithdrawnInput
     function processWithdrawnProof(ProcessWithdrawnInput calldata data) external;
 
-    /// @notice Verify a validator's balance proof from a recent beacon block and sync the key added balance.
-    /// @param data The balance proof input containing recent block header, validator witness, and balance witness.
+    /// @notice Verify a validator's balance proof from a beacon block available through recent state block roots.
+    /// @param data The balance proof input containing recent and balance block headers and proof witnesses.
     function processBalanceProof(ProcessBalanceProofInput calldata data) external;
 
     /// @notice Verify a validator's balance proof from a historical beacon block and sync the key added balance.

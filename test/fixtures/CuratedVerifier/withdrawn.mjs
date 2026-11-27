@@ -1,4 +1,4 @@
-// Usage: node withdrawn.mjs [validator=0]
+// Usage: node withdrawn.mjs <fork> [validator=0]
 //
 // Builds a beacon state with several non-slashed validators that have reached their withdrawable epoch and provides
 // a `ProcessWithdrawnInput` fixture for the selected one. See the `validators` list at the bottom of the file.
@@ -18,20 +18,23 @@ const SLOTS_PER_EPOCH = 32;
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
 
 const MAX_VALIDATORS = 1_000;
-const Fork = ssz.electra;
 
 /**
  * @param {Object} opts
+ * @param {string} opts.fork - Fork from the `ssz` library.
  * @param {string} opts.address - Ethereum address for the withdrawal credentials.
+ * @param {number} opts.credentialsPrefix - Withdrawal credentials type.
  * @param {number} opts.stateEpoch - Epoch of the recent block's state.
- * @param {Array<{index: number, nodeOperatorId: number, keyIndex: number, credentialsPrefix: number, withdrawableEpoch: number, balanceGwei: number}>} opts.validators
+ * @param {Array<{index: number, nodeOperatorId: number, keyIndex: number, withdrawableEpoch: number, balanceGwei: number}>} opts.validators
  * @param {number} opts.selected - Position of the validator to provide the fixture for in the `validators` list.
  */
 function main(opts) {
   assert(opts);
+  assert(["electra", "gloas"].includes(opts.fork));
   assert(opts.selected < opts.validators.length);
 
   const faker = new Faker("seed sEed seEd");
+  const Fork = ssz[opts.fork];
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
   const Validator = Fork.BeaconState.getPathInfo(["validators", 0]).type;
@@ -40,10 +43,10 @@ function main(opts) {
   // A slot in the middle of the epoch to check the epoch computation.
   state.slot = opts.stateEpoch * SLOTS_PER_EPOCH + 7;
 
-  while (state.validators.length < MAX_VALIDATORS) {
-    state.validators.push(Validator.defaultView());
-    state.balances.push(0);
-  }
+  state.validators = state.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
+  state.balances = state.balances.type.toView(new Array(MAX_VALIDATORS).fill(0));
 
   const validators = opts.validators.map((v, i) => {
     assert(v.index < MAX_VALIDATORS);
@@ -60,7 +63,7 @@ function main(opts) {
     validator.exitEpoch = v.withdrawableEpoch - MIN_VALIDATOR_WITHDRAWABILITY_DELAY;
     validator.withdrawableEpoch = v.withdrawableEpoch;
     validator.withdrawalCredentials = new Uint8Array([
-      ...new Uint8Array([v.credentialsPrefix]),
+      ...new Uint8Array([opts.credentialsPrefix]),
       ...new Uint8Array(11), // gap
       ...hexStrToBytesArr(opts.address),
     ]);
@@ -150,7 +153,9 @@ class Faker {
 }
 
 main({
+  fork: process.argv[2],
   address: "b3e29c46ee1745724417c0c51eb2351a1c01cf36",
+  credentialsPrefix: 0x02,
   stateEpoch: 100_500,
   validators: [
     // An exited validator with the balance left for the sweep.
@@ -158,7 +163,6 @@ main({
       index: 17,
       nodeOperatorId: 0,
       keyIndex: 0,
-      credentialsPrefix: 0x02,
       withdrawableEpoch: 100_495,
       balanceGwei: 33e9,
     },
@@ -167,7 +171,6 @@ main({
       index: 42,
       nodeOperatorId: 1,
       keyIndex: 3,
-      credentialsPrefix: 0x02,
       withdrawableEpoch: 99_000,
       balanceGwei: 1e9,
     },
@@ -176,10 +179,9 @@ main({
       index: 513,
       nodeOperatorId: 0,
       keyIndex: 7,
-      credentialsPrefix: 0x01,
       withdrawableEpoch: 100_500,
       balanceGwei: 32e9,
     },
   ],
-  selected: Number(process.argv[2] || "0"),
+  selected: Number(process.argv[3] || "0"),
 });

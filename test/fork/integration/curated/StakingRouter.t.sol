@@ -17,7 +17,17 @@ import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
 import { StakingRouterIntegrationTestBase } from "../common/StakingRouter.t.sol";
 
 contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {
+    /// @dev Mirrors the internal `CuratedModule.INITIALIZED_VERSION`.
+    uint64 internal constant CURATED_V2_VERSION = 2;
+
     address internal topUpGateway;
+
+    modifier whenUpgradedToV2() {
+        if (module.getInitializedVersion() < CURATED_V2_VERSION) {
+            vm.skip(true, "Curated v2 upgrade is not executed");
+        }
+        _;
+    }
 
     function setUp() public override {
         super.setUp();
@@ -85,7 +95,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertLt(actualDeposits, requestedDeposits);
     }
 
-    function test_routerTopUp_callsAllocateDeposits() public assertInvariants {
+    function test_routerTopUp_callsAllocateDeposits() public whenUpgradedToV2 assertInvariants {
         (uint256 noId, uint256 keyIndex, bytes memory pubkey) = integrationHelpers.getDepositableTopUpNodeOperator(
             nextAddress()
         );
@@ -128,7 +138,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(keyDelta % 1 ether, 0);
     }
 
-    function test_routerTopUp_subEtherLimitDoesNotAllocate() public assertInvariants {
+    function test_routerTopUp_subEtherLimitDoesNotAllocate() public whenUpgradedToV2 assertInvariants {
         (uint256 noId, uint256 keyIndex, bytes memory pubkey) = integrationHelpers.getDepositableTopUpNodeOperator(
             nextAddress()
         );
@@ -151,7 +161,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(curatedModule.getNodeOperatorBalance(noId), operatorBalanceBefore);
     }
 
-    function test_routerTopUp_followsTopUpAllocationFlag() public assertInvariants {
+    function test_routerTopUp_followsTopUpAllocationFlag() public whenUpgradedToV2 assertInvariants {
         (uint256 noId, address owner) = _addDepositedNodeOperator();
 
         // The first deposit leaves top-up allocation disabled.
@@ -176,7 +186,12 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         );
     }
 
-    function test_routerTopUp_balanceProofRaisesAllocatedBalance() public assertInvariants {
+    function test_routerTopUp_balanceProofRaisesAllocatedBalance()
+        public
+        whenUpgradedToV2
+        whenGloasVerifier
+        assertInvariants
+    {
         (uint256 noId, ) = _addDepositedNodeOperator();
         _enableTopUpAllocation(noId);
         uint256 allocated = _topUpFirstKey(noId, CuratedDepositAllocator.TOP_UP_STEP);
@@ -198,7 +213,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         );
     }
 
-    function test_routerTopUp_slashedKeyIsNotAllocated() public assertInvariants {
+    function test_routerTopUp_slashedKeyIsNotAllocated() public whenUpgradedToV2 whenGloasVerifier assertInvariants {
         (uint256 noId, ) = _addDepositedNodeOperator();
         _enableTopUpAllocation(noId);
         assertEq(
@@ -213,7 +228,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(_topUpFirstKey(noId, CuratedDepositAllocator.TOP_UP_STEP), 0, "slashed");
     }
 
-    function test_routerTopUp_withdrawnKeyIsNotAllocated() public assertInvariants {
+    function test_routerTopUp_withdrawnKeyIsNotAllocated() public whenUpgradedToV2 whenGloasVerifier assertInvariants {
         (uint256 noId, ) = _addDepositedNodeOperator();
         _enableTopUpAllocation(noId);
         assertEq(
@@ -228,7 +243,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         assertEq(_topUpFirstKey(noId, CuratedDepositAllocator.TOP_UP_STEP), 0, "withdrawn");
     }
 
-    function test_routerTopUp_revertsOnInvalidSigningKey() public {
+    function test_routerTopUp_revertsOnInvalidSigningKey() public whenUpgradedToV2 {
         (uint256 noId, uint256 keyIndex, ) = integrationHelpers.getDepositableTopUpNodeOperator(nextAddress());
         bytes memory invalidPubkey = new bytes(48);
         (

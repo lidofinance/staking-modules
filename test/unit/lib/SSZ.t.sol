@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 
 import { BeaconBlockHeader, Validator, Withdrawal } from "src/lib/Types.sol";
-import { GIndex, pack } from "src/lib/GIndex.sol";
+import { GIndex, toGIndex } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
 import { SSZ } from "src/lib/SSZ.sol";
 
@@ -77,6 +77,29 @@ contract SSZTest is Utilities, Test {
         n = SSZ.endianReverse(n);
         n = SSZ.endianReverse(n);
         assertEq(n, v);
+    }
+
+    function test_uint64At() public pure {
+        bytes32 node = 0x1112131415161718212223242526272831323334353637384142434445464748;
+        assertEq(SSZ.uint64At(node, 0), 0x1817161514131211);
+        assertEq(SSZ.uint64At(node, 1), 0x2827262524232221);
+        assertEq(SSZ.uint64At(node, 2), 0x3837363534333231);
+        assertEq(SSZ.uint64At(node, 3), 0x4847464544434241);
+    }
+
+    function test_uint64At_ItemOfLaterNode() public pure {
+        bytes32 node = 0x1112131415161718212223242526272831323334353637384142434445464748;
+        assertEq(SSZ.uint64At(node, 4), 0x1817161514131211);
+        assertEq(SSZ.uint64At(node, 7), 0x4847464544434241);
+    }
+
+    function testFuzz_uint64At(bytes32 node, uint256 index) public pure {
+        uint256 offset = (index % 4) * 8;
+        uint64 expected;
+        for (uint256 i; i < 8; ++i) {
+            expected |= uint64(uint8(node[offset + i])) << (8 * i);
+        }
+        assertEq(SSZ.uint64At(node, index), expected);
     }
 
     function test_withdrawalRoot() public pure {
@@ -275,7 +298,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0x0000000000000000000000000000000000000000000000000000000000000000,
-            pack(4, 0)
+            toGIndex(4)
         );
 
         // prettier-ignore
@@ -288,7 +311,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5,
-            pack(5, 0)
+            toGIndex(5)
         );
     }
 
@@ -302,7 +325,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0x0a4b105f69a6f41c3b3efc9bb5ac525b5b557a524039a13c657a916d8eb04451,
-            pack(2, 0)
+            toGIndex(2)
         );
     }
 
@@ -314,7 +337,7 @@ contract SSZTest is Utilities, Test {
             new bytes32[](0),
             0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
             0x0000000000000000000000000000000000000000000000000000000000000000,
-            pack(2, 0)
+            toGIndex(2)
         );
     }
 
@@ -325,7 +348,7 @@ contract SSZTest is Utilities, Test {
             new bytes32[](0),
             0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
             0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
-            pack(1, 0)
+            toGIndex(1)
         );
     }
 
@@ -344,7 +367,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5,
-            pack(4, 0)
+            toGIndex(4)
         );
     }
 
@@ -363,7 +386,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0x0000000000000000000000000000000000000000000000000000000000000000,
-            pack(5, 0)
+            toGIndex(5)
         );
     }
 
@@ -382,7 +405,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5,
-            pack(2, 0)
+            toGIndex(2)
         );
     }
 
@@ -401,7 +424,7 @@ contract SSZTest is Utilities, Test {
             proof,
             0xda1c902c54a4386439ce622d7e527dc11decace28ebb902379cba91c4a116b1c,
             0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5,
-            pack(8, 0)
+            toGIndex(8)
         );
     }
 

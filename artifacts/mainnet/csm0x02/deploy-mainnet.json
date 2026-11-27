@@ -75,7 +75,9 @@
     "defaultAvgPerfLeewayBP": 300,
     "circuitBreakerPauser": "0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f",
     "circuitBreaker": "0x6019CB557978296BA3C08a7B73225C0975DFB2F7",
-    "defaultStrikesThreshold": 3
+    "defaultStrikesThreshold": 3,
+    "verifierGloasSlot": "18446744073709551615",
+    "verifierWcType": 2
   },
   "Ejector": "0x2EE500885870b020e84E86a09A5d26D1EEec3E5E",
   "ExitPenalties": "0xa96021Eff64E8FE927424C77902c56C4F17d10A5",

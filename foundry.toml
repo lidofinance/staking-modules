@@ -2,7 +2,7 @@
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 150
-bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
+bytecode_hash = "ipfs" # Appends the IPFS hash of the metadata, which covers the sources, to the bytecode.
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
 verbosity = 3
@@ -12,7 +12,8 @@ out = "out"
 libs = ["lib", "node_modules"]
 cache_path = "cache"
 
-block_gas_limit = 30_000_000
+# Forge caps every test call and simulated script run at the block gas limit, keep it out of the way.
+block_gas_limit = 1_000_000_000
 fuzz = { runs = 256, max_test_rejects = 100_000 }
 ffi = true
 
@@ -42,31 +43,31 @@ ignored_warnings_from = [
     "node_modules"
 ]
 
+# Fast iterations, @see AGENTS.md.
 [profile.lite]
+solc = "solar"
 optimizer = false
 fuzz = { runs = 50 }
-block_gas_limit = 60_000_000
+# Foundry's defaults plus the pragma mismatch warning, solar being a newer compiler than the pinned one.
+ignored_error_codes = [
+    "license",
+    "code-size",
+    "init-code-size",
+    "transient-storage",
+    "transfer-deprecated",
+    "natspec-memory-safe-assembly-deprecated",
+    5333,
+]
 
 [profile.ci]
 verbosity = 3
 eth_rpc_timeout = 120
 fuzz = { runs = 10_000, max_test_rejects = 2_000_000 }
-block_gas_limit = 60_000_000
 
 [profile.ci_quick]
 verbosity = 3
 eth_rpc_timeout = 120
 fuzz = { runs = 1000, max_test_rejects = 500_000 }
-
-[profile.coverage]
-# due to coverage running with optimizer disabled, we need to increase the gas limit
-# to fit CSM contract tests in one block
-block_gas_limit = 60_000_000
-
-[profile.deploy]
-# unknown problem of too high estimated gas usage in the implementation deployment script
-# after upgrading forge-std 1.7.6 -> 1.9.5
-block_gas_limit = 60_000_000
 
 [profile.upgrades]
 extra_output = ["storageLayout"]
@@ -89,6 +90,6 @@ exclude_lints = [
 # See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
 
 [bind_json]
-# Only the deployment params structs are (de)serialized as JSON, @see script/utils/JsonBindings.sol.
+# Only the deployment params and vote inputs structs are (de)serialized as JSON, @see script/utils/JsonBindings.sol.
 out = "script/utils/JsonBindings.sol"
-include = ["*DeployBase*", "*DeployCSM0x02Base*", "*DeployTwoPhase*"]
+include = ["*DeployBase*", "*DeployCSM0x02Base*", "*script/votes/*"]

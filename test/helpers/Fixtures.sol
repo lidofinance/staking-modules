@@ -32,11 +32,13 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { JsonBindings } from "script/utils/JsonBindings.sol";
+import { WCType } from "script/utils/WithdrawalCredentials.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -105,8 +107,7 @@ contract DeploymentHelpers is Asserts {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
-        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/<module>/utils/<name>/deploy-<chain>.json)
-        string UTILS_DEPLOY_CONFIG;
+        uint256 VOTE_PREV_BLOCK;
     }
 
     // Intersection of DeployParams and CuratedDeployParams
@@ -133,11 +134,9 @@ contract DeploymentHelpers is Asserts {
         uint256 consensusVersion;
         address[] oracleMembers;
         uint256 hashConsensusQuorum;
-        GIndex gIFirstWithdrawal;
-        GIndex gIFirstValidator;
-        GIndex gIFirstHistoricalSummary;
-        GIndex gIFirstBalanceNode;
         uint256 verifierFirstSupportedSlot;
+        uint256 verifierGloasSlot;
+        WCType verifierWcType;
         uint256 capellaSlot;
         uint256 minWithdrawalRatio;
         uint256[2][] defaultBondCurve;
@@ -186,7 +185,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierV3;
         address hashConsensus;
         address lidoLocator;
         address circuitBreaker;
@@ -210,7 +208,6 @@ contract DeploymentHelpers is Asserts {
         address strikes;
         address strikesImpl;
         address verifier;
-        address curatedVerifier;
         address hashConsensus;
         address metaRegistry;
         address metaRegistryImpl;
@@ -225,7 +222,7 @@ contract DeploymentHelpers is Asserts {
         Env memory env = Env(
             vm.envOr("RPC_URL", string("")),
             vm.envOr("DEPLOY_CONFIG", string("")),
-            vm.envOr("UTILS_DEPLOY_CONFIG", string(""))
+            vm.envOr("VOTE_PREV_BLOCK", uint256(0))
         );
         vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
         vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
@@ -308,13 +305,6 @@ contract DeploymentHelpers is Asserts {
         vm.label(deploymentConfig.feeDistributorImpl, "feeDistributorImpl");
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        if (vm.keyExistsJson(config, ".VerifierV3")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV3");
-            vm.label(deploymentConfig.verifierV3, "verifierV3");
-        } else if (vm.keyExistsJson(config, ".VerifierV2")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV2");
-            vm.label(deploymentConfig.verifierV3, "verifierV3");
-        }
         vm.label(deploymentConfig.verifier, "verifier");
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
@@ -379,16 +369,8 @@ contract DeploymentHelpers is Asserts {
         deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
 
-        // A scratch deployment has only `.CuratedVerifier`; an upgrade artifact also keeps the previous `.Verifier`.
-        if (vm.keyExistsJson(config, ".Verifier")) {
-            deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-            vm.label(deploymentConfig.verifier, "curatedVerifier");
-        }
-
-        if (vm.keyExistsJson(config, ".CuratedVerifier")) {
-            deploymentConfig.curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
-            vm.label(deploymentConfig.curatedVerifier, "curatedVerifierV2");
-        }
+        deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
+        vm.label(deploymentConfig.verifier, "curatedVerifier");
 
         deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
@@ -468,11 +450,9 @@ contract DeploymentHelpers is Asserts {
         dst.hashConsensusQuorum = src.hashConsensusQuorum;
 
         // Verifier
-        dst.gIFirstWithdrawal = src.gIFirstWithdrawal;
-        dst.gIFirstValidator = src.gIFirstValidator;
-        dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
-        dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
+        dst.verifierGloasSlot = src.verifierGloasSlot;
+        dst.verifierWcType = src.verifierWcType;
         dst.capellaSlot = src.capellaSlot;
         dst.minWithdrawalRatio = src.minWithdrawalRatio;
 
@@ -585,11 +565,9 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
+        params.verifierWcType = decoded.verifierWcType;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -639,11 +617,9 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
+        params.verifierWcType = decoded.verifierWcType;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -692,11 +668,9 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
+        params.verifierWcType = decoded.verifierWcType;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -820,9 +794,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        verifier = Verifier(
-            deploymentConfig.verifierV3 == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierV3
-        );
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());
@@ -861,12 +833,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
-        // `CuratedVerifier` replaces `Verifier` once deployed. Both share the role and pause interface used by the tests.
-        verifier = Verifier(
-            deploymentConfig.curatedVerifier == address(0)
-                ? deploymentConfig.verifier
-                : deploymentConfig.curatedVerifier
-        );
+        // The Curated module runs `CuratedVerifier`, it shares the role and pause interface used by the tests.
+        verifier = Verifier(deploymentConfig.verifier);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
         lido = ILido(locator.lido());

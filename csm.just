@@ -1,18 +1,10 @@
 deploy_script_name := "Deploy" + chain_script_suffix
-deploy_csm_implementations_script_name := "DeployCSMImplementations" + chain_script_suffix
-
-deploy_config_path := "artifacts" / chain / "csm" / "deploy-" + chain + ".json"
 deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy_script_name
-deploy_csm_impls_script_path := "script" / "csm" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
 
 csm_artifacts_latest_dir := "./artifacts/latest/csm/"
 csm_artifacts_local_dir := "./artifacts/local/csm/"
-csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
-csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
 csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
 csm_local_deploy_config_path := csm_artifacts_local_dir + "deploy-" + chain + ".json"
-csm_latest_upgrade_config_path := csm_artifacts_latest_dir + "upgrade-" + chain + ".json"
-csm_local_upgrade_config_path := csm_artifacts_local_dir + "upgrade-" + chain + ".json"
 
 # Deployment
 
@@ -42,34 +34,6 @@ deploy-csm-live-dry *args:
 verify-csm-live *args:
     just _warn "Pass --chain=your_chain manually. e.g. --chain=hoodi for testnet deployment"
     just _verify-live-generic {{deploy_script_path}} {{args}}
-
-deploy-csm-impl *args:
-    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
-        just _deploy-csm-impl {{args}}
-
-[confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
-deploy-csm-impl-live *args:
-    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    just _assert-clean-workspace
-    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
-        just _deploy-csm-impl --broadcast --verify {{args}}
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
-
-deploy-csm-impl-live-no-confirm *args:
-    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
-        just _deploy-csm-impl --broadcast --verify {{args}}
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
-
-deploy-csm-impl-dry *args:
-    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
-        just _deploy-csm-impl {{args}}
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
-
-# Governance helpers
-upgrade-csm-v3:
-    just vote-upgrade
 
 # Local fork flows
 
@@ -114,10 +78,3 @@ test-csm-full-deploy *args:
     export RPC_URL={{anvil_rpc_url}}
 
     just test-deployment-full-scratch {{args}}
-
-# Internal helpers
-_deploy-csm-impl *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
-            --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
-            -- {{deploy_config_path}} `git rev-parse HEAD`

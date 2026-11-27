@@ -15,7 +15,7 @@ abstract contract VerifierIntegrationTestBase is ModuleTypeBase {
         _setUpModule();
     }
 
-    function test_processSlashedProof() public {
+    function test_processSlashedProof() public whenGloasVerifier {
         uint256 noId = integrationHelpers.addDepositedNodeOperator(nextAddress(), 1);
 
         _processSlashedProof(noId, 0);
@@ -23,7 +23,7 @@ abstract contract VerifierIntegrationTestBase is ModuleTypeBase {
         assertTrue(module.isValidatorSlashed(noId, 0));
     }
 
-    function test_processWithdrawalProof() public {
+    function test_processWithdrawalProof() public whenGloasVerifier {
         uint256 noId = integrationHelpers.addDepositedNodeOperator(nextAddress(), 1);
 
         _processWithdrawalProof(noId, 0);
@@ -45,7 +45,7 @@ abstract contract VerifierIntegrationTestBase is ModuleTypeBase {
 
 /// @dev Modules accept balance proofs only for 0x02 validators.
 abstract contract VerifierBalanceIntegrationTestBase is VerifierIntegrationTestBase {
-    function test_processBalanceProof() public {
+    function test_processBalanceProof() public whenGloasVerifier {
         uint256 noId = integrationHelpers.addDepositedNodeOperator(nextAddress(), 1);
         uint256 operatorBalanceBefore = module.getNodeOperatorBalance(noId);
         // Modules confirm the key balance above the activation balance.

@@ -27,6 +27,9 @@
 
 - For fast local checks after small edits, prefer targeted compile of changed Solidity files: `forge build <changed-file-1> <changed-file-2> ...`.
 - Keep `forge build` as the full-project compile when touching shared interfaces/libraries or before final handoff.
+- Agentic runs only: compile and run tests with the `lite` profile, e.g. `FOUNDRY_PROFILE=lite just build`, `FOUNDRY_PROFILE=lite just test-unit`. It uses the solar backend, so a full build takes seconds instead of minutes.
+  - The profile disables the optimizer, and solar codegen differs from solc. Don't rely on it for gas numbers, contract sizes, deployments, or verification; use the default profile for those.
+  - Switching between profiles recompiles the whole project.
 
 ## Coding Style & Naming Conventions
 
@@ -75,6 +78,12 @@
 - Deployment phase must end in post-handoff state: required admin roles are returned to the protocol agent and deployer admin rights are revoked.
 - Vote phase: simulate-vote scripts should apply governance actions to already deployed protocol contracts only (proxy upgrades, role/state transitions), not deployment-only setup.
 - Vote phase steps should be explicit and deterministic: encode concrete, ordered calls with known addresses; avoid generic loop-based governance steps unless explicitly required.
+- Module artifacts `artifacts/<chain>/<module>/` describe the deployment once the pending votes are executed.
+- Pending votes: `artifacts/<chain>/votes/<vote>.json` holds every value a vote hard-codes, replaced addresses included, keyed by the artifact directory of the module it changes (`csm`, `csm0x02`, `curated`) or by another component, and its Dual Governance proposal: `dgProposalId` is zero until the proposal is submitted, then recorded by hand.
+  - The name and section types of a vote live in `script/votes/`, its steps in `SimulateVote`, whose `run` lists the votes in their execution order, and its tests in `test/fork/votes/`. `just vote-pending` simulates the ones with a file until their proposals are executed, and `just test-votes` compares the state at `VOTE_PREV_BLOCK`, the block right before the simulation, with the one after it.
+  - Deploy scripts create the file and write their own sections only, the other values are written by hand. Once a vote is submitted, deploy scripts refuse to change it.
+  - Remove the file, the steps and the tests of a vote once it is executed.
+- Only live runs write to the tracked artifacts. The others write to `artifacts/local/<chain>/`, a fresh copy of the artifacts of the chain made on each run.
 
 ## Commit & Pull Request Guidelines
 

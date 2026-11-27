@@ -1,5 +1,5 @@
 # Merges the libraries deployed by a forge script into the `ExternalLibraries` key of a deployment artifact.
-# Usage: jq --slurpfile tx <transactions.json> -f script/mergeExternalLibraries.jq <deploy-config.json>
+# Usage: jq --slurpfile tx <broadcast run.json> -f script/mergeExternalLibraries.jq <deploy-config.json>
 
 def to_library:
   . as $entry

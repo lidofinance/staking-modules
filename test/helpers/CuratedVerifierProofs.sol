@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { CuratedVerifier } from "src/CuratedVerifier.sol";
 import { ICuratedVerifier } from "src/interfaces/ICuratedVerifier.sol";
+import { BeaconBlockHeader } from "src/lib/Types.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { BeaconProofs } from "./BeaconProofs.sol";
@@ -26,9 +27,10 @@ library CuratedVerifierProofs {
             balance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             status: BeaconProofs.ValidatorStatus.Slashed
         });
+        BeaconProofs.mockBeaconRoot(proof.blockRoot);
 
         input.validator = _validatorWitness(proof, noId, keyIndex);
-        input.recentBlock = _recentBlock(proof);
+        input.recentBlock = _recentBlock(proof.header);
     }
 
     /// @dev Returns a proof of `balance` for the key at `keyIndex` of `noId`.
@@ -45,8 +47,13 @@ library CuratedVerifierProofs {
             balance: balance,
             status: BeaconProofs.ValidatorStatus.Active
         });
+        BeaconProofs.mockBeaconRoot(proof.nextBlockRoot);
 
-        input.recentBlock = _recentBlock(proof);
+        input.recentBlock = _recentBlock(proof.nextHeader);
+        input.balanceBlock = ICuratedVerifier.HistoricalHeaderWitness({
+            header: proof.header,
+            proof: proof.blockRootProof
+        });
         input.validator = _validatorWitness(proof, noId, keyIndex);
         input.balance = ICuratedVerifier.BalanceWitness({ node: proof.balanceNode, proof: proof.balanceProof });
     }
@@ -64,9 +71,10 @@ library CuratedVerifierProofs {
             balance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             status: BeaconProofs.ValidatorStatus.Withdrawn
         });
+        BeaconProofs.mockBeaconRoot(proof.blockRoot);
 
         input.validator = _validatorWitness(proof, noId, keyIndex);
-        input.recentBlock = _recentBlock(proof);
+        input.recentBlock = _recentBlock(proof.header);
     }
 
     function _validatorProof(
@@ -77,11 +85,11 @@ library CuratedVerifierProofs {
         BeaconProofs.ValidatorStatus status
     ) private returns (BeaconProofs.ValidatorProof memory) {
         return
-            BeaconProofs.mockBeaconRootAndGetValidatorProof({
+            BeaconProofs.getValidatorProof({
                 pubkey: verifier.MODULE().getSigningKeys(noId, keyIndex, 1),
-                withdrawalAddress: verifier.WITHDRAWAL_ADDRESS(),
-                // The current generalized indices apply from the pivot slot.
-                slot: verifier.PIVOT_SLOT(),
+                withdrawalCredentials: verifier.WITHDRAWAL_CREDENTIALS(),
+                firstSupportedSlot: verifier.FIRST_SUPPORTED_SLOT(),
+                gloasSlot: verifier.GLOAS_SLOT(),
                 balance: balance,
                 status: status
             });
@@ -103,8 +111,8 @@ library CuratedVerifierProofs {
     }
 
     function _recentBlock(
-        BeaconProofs.ValidatorProof memory proof
+        BeaconBlockHeader memory header
     ) private view returns (ICuratedVerifier.RecentHeaderWitness memory) {
-        return ICuratedVerifier.RecentHeaderWitness({ header: proof.header, rootsTimestamp: uint64(block.timestamp) });
+        return ICuratedVerifier.RecentHeaderWitness({ header: header, rootsTimestamp: uint64(block.timestamp) });
     }
 }

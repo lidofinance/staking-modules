@@ -6,36 +6,18 @@ pragma solidity 0.8.33;
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
-import { CSModule } from "../../src/CSModule.sol";
+import { BaseModule } from "../../src/abstract/BaseModule.sol";
 import { CuratedModule } from "../../src/CuratedModule.sol";
-import { Accounting } from "../../src/Accounting.sol";
-import { Ejector } from "../../src/Ejector.sol";
-import { FeeDistributor } from "../../src/FeeDistributor.sol";
-import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
-import { FeeOracle } from "../../src/FeeOracle.sol";
-import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
-import { Verifier } from "../../src/Verifier.sol";
-import { VettedGate } from "../../src/VettedGate.sol";
-import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
-import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
+import { Votes } from "../votes/Votes.sol";
+import { GloasVerifiers, VerifierSwap } from "../votes/GloasVerifiers.sol";
 import { ForkHelpersCommon } from "./Common.sol";
-import { DeployParams } from "../csm/DeployBase.s.sol";
-import { DeployCSM0x02Params } from "../csm0x02/DeployCSM0x02Base.s.sol";
-import { CuratedDeployParams } from "../curated/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
-    bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
-        keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
-    bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
-        keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
-    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
-    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
-
     error WrongModuleType();
 
     /// @dev Simulation helper only.
@@ -197,265 +179,64 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
-    /// @dev Simulation helper only.
-    ///      In a real governance vote, all steps below are expected to be executed atomically
-    ///      in a single transaction via a temporary vote executor contract.
-    function upgradeCurated() external {
-        _setUp();
-        if (moduleType != ModuleType.Curated) revert WrongModuleType();
-
-        Env memory env = envVars();
-        string memory config = vm.readFile(env.DEPLOY_CONFIG);
-        CuratedDeployParams memory params = parseCuratedDeployParams(env.DEPLOY_CONFIG);
-        address previousVerifier = vm.parseJsonAddress(config, ".Verifier");
-        address curatedVerifier = vm.parseJsonAddress(config, ".CuratedVerifier");
-
-        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
-        vm.startBroadcast(_prepareProxyAdmin(address(proxy)));
-        // 1. Upgrade and finalize CuratedModule v2 atomically.
-        proxy.proxy__upgradeToAndCall(address(curatedModuleImpl), abi.encodeCall(CuratedModule.finalizeUpgradeV2, ()));
-        vm.stopBroadcast();
-
-        bytes32 verifierRole = curatedModule.VERIFIER_ROLE();
-        bytes32 reportRole = curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
-
-        vm.startBroadcast(_prepareAdmin(address(curatedModule)));
-        // 2. Grant the committee permission to enable top-up allocation.
-        curatedModule.grantRole(curatedModule.ENABLE_TOP_UP_ALLOCATION_ROLE(), params.topUpAllocationEnabler);
-        // 3. Revoke the verifier roles from the previous Verifier.
-        curatedModule.revokeRole(verifierRole, previousVerifier);
-        curatedModule.revokeRole(reportRole, previousVerifier);
-        // 4. Grant the verifier roles to CuratedVerifier.
-        curatedModule.grantRole(verifierRole, curatedVerifier);
-        curatedModule.grantRole(reportRole, curatedVerifier);
-        // 5. Unregister the previous Verifier pauser in CircuitBreaker.
-        circuitBreaker.registerPauser(previousVerifier, address(0));
-        // 6. Register the CuratedVerifier pauser in CircuitBreaker.
-        circuitBreaker.registerPauser(curatedVerifier, params.circuitBreakerPauser);
-        vm.stopBroadcast();
+    /// @dev Simulates the pending votes of the chain found in `VOTES_DIR`, in the order they are to be executed.
+    function run() external {
+        _gloasVerifiers();
     }
 
     /// @dev Simulation helper only.
     ///      In a real governance vote, all steps below are expected to be executed atomically
     ///      in a single transaction via a temporary vote executor contract.
-    function upgrade() external {
-        _setUp();
-        if (moduleType != ModuleType.Community) revert WrongModuleType();
+    function _gloasVerifiers() internal {
+        (bool pending, string memory json) = _pendingVote(GloasVerifiers.NAME);
+        if (!pending) return;
 
-        Env memory env = envVars();
-        DeploymentConfig memory deploymentConfig;
-        DeployParams memory deployParams;
-        {
-            string memory deploymentConfigContent = vm.readFile(env.DEPLOY_CONFIG);
-            deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
-            deployParams = parseDeployParams(env.DEPLOY_CONFIG);
-        }
-        VettedGate existingVettedGate = VettedGate(deploymentConfig.vettedGate);
-        address admin = _prepareAdmin(deploymentConfig.csm);
-        IBurner burner = IBurner(locator.burner());
-        address burnerAdmin = _prepareAdmin(address(burner));
-
-        {
-            OssifiableProxy moduleProxy = OssifiableProxy(payable(deploymentConfig.csm));
-            vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
-            // 1-2. Upgrade and finalize CSModule v3 in a single tx
-            moduleProxy.proxy__upgradeToAndCall(
-                deploymentConfig.csmImpl,
-                abi.encodeCall(CSModule.finalizeUpgradeV3, ())
-            );
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(deploymentConfig.parametersRegistry));
-            vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
-            // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
-            parametersRegistryProxy.proxy__upgradeToAndCall(
-                deploymentConfig.parametersRegistryImpl,
-                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, ())
-            );
-            vm.stopBroadcast();
-        }
-        {
-            OssifiableProxy oracleProxy = OssifiableProxy(payable(deploymentConfig.oracle));
-            vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
-            // 5-6. Upgrade and finalize FeeOracle v3 in a single tx
-            oracleProxy.proxy__upgradeToAndCall(
-                deploymentConfig.oracleImpl,
-                abi.encodeCall(FeeOracle.finalizeUpgradeV3, (deployParams.consensusVersion))
-            );
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy vettedGateProxy = OssifiableProxy(payable(deploymentConfig.vettedGate));
-            vm.startBroadcast(_prepareProxyAdmin(address(vettedGateProxy)));
-            // 6. Upgrade VettedGate implementation
-            vettedGateProxy.proxy__upgradeTo(deploymentConfig.vettedGateImpl);
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy accountingProxy = OssifiableProxy(payable(deploymentConfig.accounting));
-            vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
-            // 7-8. Upgrade and finalize Accounting v3 in a single tx
-            accountingProxy.proxy__upgradeToAndCall(
-                deploymentConfig.accountingImpl,
-                abi.encodeCall(Accounting.finalizeUpgradeV3, ())
-            );
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(deploymentConfig.feeDistributor));
-            vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
-            // 9-10. Upgrade and finalize FeeDistributor v3 in a single tx
-            feeDistributorProxy.proxy__upgradeToAndCall(
-                deploymentConfig.feeDistributorImpl,
-                abi.encodeCall(FeeDistributor.finalizeUpgradeV3, ())
-            );
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(deploymentConfig.exitPenalties));
-            vm.startBroadcast(_prepareProxyAdmin(address(exitPenaltiesProxy)));
-            // 11. Upgrade ExitPenalties implementation
-            exitPenaltiesProxy.proxy__upgradeTo(deploymentConfig.exitPenaltiesImpl);
-            vm.stopBroadcast();
-        }
-
-        {
-            OssifiableProxy strikesProxy = OssifiableProxy(payable(deploymentConfig.strikes));
-            vm.startBroadcast(_prepareProxyAdmin(address(strikesProxy)));
-            // 12. Upgrade ValidatorStrikes implementation
-            strikesProxy.proxy__upgradeTo(deploymentConfig.strikesImpl);
-            vm.stopBroadcast();
-        }
-
-        module = CSModule(deploymentConfig.csm);
-        accounting = Accounting(deploymentConfig.accounting);
-        strikes = ValidatorStrikes(deploymentConfig.strikes);
-
-        address oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
-        if (oldPermissionlessGate == address(existingVettedGate)) {
-            oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
-        }
-        address oldEjector = address(strikes.ejector());
-        {
-            Verifier oldVerifier = Verifier(deploymentConfig.verifier);
-            Ejector oldEjectorContract = Ejector(oldEjector);
-
-            vm.startBroadcast(admin);
-
-            // 14. Point ValidatorStrikes to the new Ejector
-            strikes.setEjector(deploymentConfig.ejector);
-
-            // 15. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
-            module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.generalDelayedPenaltyReporter);
-            // 16. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
-            module.grantRole(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.easyTrackEVMScriptExecutor);
-            // 17. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
-            module.revokeRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE, deployParams.generalDelayedPenaltyReporter);
-            // 18. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
-            module.revokeRole(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE, deployParams.easyTrackEVMScriptExecutor);
-            // 19. Revoke VERIFIER_ROLE from previous verifier
-            module.revokeRole(module.VERIFIER_ROLE(), deploymentConfig.verifier);
-            // 20. Grant VERIFIER_ROLE to VerifierV3
-            module.grantRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3);
-            // 21. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
-            module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), deploymentConfig.verifierV3);
-            // 22. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
-            module.grantRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                deployParams.easyTrackEVMScriptExecutor
-            );
-            // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
-            module.revokeRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate);
-            // 24. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
-            module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.permissionlessGate);
-
-            // 25. Revoke PAUSE_ROLE from reseal manager on old Verifier
-            oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), deployParams.resealManager);
-            // 26. Revoke RESUME_ROLE from reseal manager on old Verifier
-            oldVerifier.revokeRole(oldVerifier.RESUME_ROLE(), deployParams.resealManager);
-            // 27. Revoke PAUSE_ROLE from reseal manager on old Ejector
-            oldEjectorContract.revokeRole(oldEjectorContract.PAUSE_ROLE(), deployParams.resealManager);
-            // 28. Revoke RESUME_ROLE from reseal manager on old Ejector
-            oldEjectorContract.revokeRole(oldEjectorContract.RESUME_ROLE(), deployParams.resealManager);
-
-            // 29-30. Revoke legacy referral program roles
-            existingVettedGate.revokeRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent);
-            existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
-            // 31. Set human-readable name for migrated Identified Community Stakers gate
-            existingVettedGate.setName(deployParams.identifiedCommunityStakersGateName);
-
-            // 32-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
-            module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-
-            ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
-            cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
-            cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
-            cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
-            cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
-            cb.registerPauser(deploymentConfig.identifiedDVTClusterGate, deployParams.circuitBreakerPauser);
-            cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
-            cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
-            // 43-44. Grant Identified DVT Cluster gate permissions
-            module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.identifiedDVTClusterGate);
-            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), deploymentConfig.identifiedDVTClusterGate);
-
-            // 45-47. Deploy Identified DVT Cluster bond curve and parameter overrides
-            accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), deploymentConfig.identifiedDVTClusterCurveSetup);
-            parametersRegistry.grantRole(
-                parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(),
-                deploymentConfig.identifiedDVTClusterCurveSetup
-            );
-            OneShotCurveSetup(deploymentConfig.identifiedDVTClusterCurveSetup).execute();
-
-            // 48. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
-            parametersRegistry.grantRole(
-                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
-                deployParams.penaltiesManager
-            );
-
-            vm.stopBroadcast();
-        }
-
-        {
-            vm.startBroadcast(burnerAdmin);
-            // 49. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
-            burner.revokeRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting));
-            // 50. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
-            burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
-            vm.stopBroadcast();
-        }
-
-        {
-            ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
-                locator.triggerableWithdrawalsGateway()
-            );
-            address twgAdmin = _prepareAdmin(address(twg));
-
-            vm.startBroadcast(twgAdmin);
-            // 51. Revoke TWG full-withdrawal role from old Ejector
-            twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 52. Grant TWG full-withdrawal role to new Ejector
-            twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
-            vm.stopBroadcast();
-        }
+        _swapVerifier(json, "csm");
+        _swapVerifier(json, "csm0x02");
+        _swapVerifier(json, "curated");
     }
 
-    /// @dev Simulation helper only. Executes post-vote state preparation that is not part of the vote payload.
-    function postUpgrade() external {
-        _setUp();
-        if (moduleType != ModuleType.Community) revert WrongModuleType();
+    /// @dev A vote is pending while its file exists and its Dual Governance proposal is not executed.
+    function _pendingVote(string memory name) internal view returns (bool pending, string memory json) {
+        string memory file = Votes.path(name);
+        if (!vm.isFile(file)) {
+            console.log("No pending vote at", file);
+            return (false, json);
+        }
+
+        json = vm.readFile(file);
+        if (Votes.isExecuted(json)) {
+            console.log("The vote is executed, remove it with its steps and tests:", file);
+            return (false, json);
+        }
+
+        console.log("Simulating the vote at", file);
+        return (true, json);
+    }
+
+    function _swapVerifier(string memory json, string memory moduleKey) internal {
+        (bool found, VerifierSwap memory swap) = GloasVerifiers.read(json, moduleKey);
+        if (!found) {
+            console.log("No Verifier swap for", moduleKey);
+            return;
+        }
+
+        BaseModule module = BaseModule(swap.module);
+        ICircuitBreaker cb = ICircuitBreaker(swap.circuitBreaker);
 
         vm.startBroadcast(_prepareAdmin(address(module)));
-        module.rebuildTotalWithdrawnValidators();
+        // 1. Revoke VERIFIER_ROLE from the previous Verifier
+        module.revokeRole(module.VERIFIER_ROLE(), swap.oldVerifier);
+        // 2. Revoke REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE from the previous Verifier
+        module.revokeRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), swap.oldVerifier);
+        // 3. Grant VERIFIER_ROLE to the new Verifier
+        module.grantRole(module.VERIFIER_ROLE(), swap.newVerifier);
+        // 4. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to the new Verifier
+        module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), swap.newVerifier);
+        // 5. Register the new Verifier in CircuitBreaker with the pauser of the previous one
+        cb.registerPauser(swap.newVerifier, swap.pauser);
+        // 6. Unregister the previous Verifier from CircuitBreaker (a zero pauser removes it)
+        cb.registerPauser(swap.oldVerifier, address(0));
         vm.stopBroadcast();
     }
 }
